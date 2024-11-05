@@ -1,6 +1,6 @@
 # ezcheck
 
-ezcheck is an ergonomic, standard-output command-line tool for calculating, comparing, and verifying the hashes of strings and files.
+ezcheck(easy check) is an ergonomic, standard-output command-line tool for calculating, comparing, and verifying the hashes of strings and files.
 
 ezcheck supports a lot of hash algorithm: MD2(Unsafe), MD4(Unsafe), MD5(Unsafe), SHA1(Unsafe), SHA224, SHA256, SHA384, SHA512. Although many of the hash algorithms are proven to be insecure, ezcheck still provides them for maximum compatibility, but it does not recommend users continue to use them. 
 
@@ -27,7 +27,7 @@ $ cargo test
 
 ## Usage
 
-Supported hash algorithm:
+Supported hash algorithms:
 * MD2(Unsafe)
 * MD4(Unsafe)
 * MD5(Unsafe)
