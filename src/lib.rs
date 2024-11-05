@@ -180,7 +180,7 @@ pub mod core {
                 }
 
             } else {
-                return Err("Error: Not a valid shasum file".to_string());
+                return Err("Error: Not a valid shasum file.".to_string());
             }
         }
         Ok(compare_tasks)

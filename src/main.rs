@@ -15,76 +15,76 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Args {
-    /// Calculate hash for a file or text
+    /// Calculate hash for a file or text.
     Calculate {
         /// Optional algorithm to use for calculate hash
         /// Supported algorithms:
-        ///   * MD2(Unsafe)
-        ///   * MD4(Unsafe)
-        ///   * MD5(Unsafe)
-        ///   * SHA1(Unsafe)
-        ///   * SHA224
-        ///   * SHA256(default)
-        ///   * SHA384
-        ///   * SHA512
+        ///  * MD2(Unsafe)
+        ///  * MD4(Unsafe)
+        ///  * MD5(Unsafe)
+        ///  * SHA1(Unsafe)
+        ///  * SHA224
+        ///  * SHA256(default)
+        ///  * SHA384
+        ///  * SHA512
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
-        /// File to calculate hash, specify filename with -f/--file or directly provide the filename
+        /// File to calculate hash, specify filename with -f/--file or directly provide the filename.
         #[arg(short, long)]
         file: Option<String>,
 
-        /// Direct text input for hash calculation
+        /// Direct text input for hash calculation.
         #[arg(short, long)]
         text: Option<String>,
     },
 
-    /// Compare with given hash
+    /// Compare with given hash.
     Compare {
-        /// Optional algorithm to use for calculate hash
-        /// Leave blank to automatically detect the hash algorithm
+        /// Optional algorithm to use for calculate hash.
+        /// Leave blank to automatically detect the hash algorithm.
         /// Supported algorithms:
-        ///   * MD2(Unsafe)
-        ///   * MD4(Unsafe)
-        ///   * MD5(Unsafe)
-        ///   * SHA1(Unsafe)
-        ///   * SHA224
-        ///   * SHA256
-        ///   * SHA384
-        ///   * SHA512
+        ///  * MD2(Unsafe)
+        ///  * MD4(Unsafe)
+        ///  * MD5(Unsafe)
+        ///  * SHA1(Unsafe)
+        ///  * SHA224
+        ///  * SHA256
+        ///  * SHA384
+        ///  * SHA512
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
-        /// File to calculate hash, specify filename with -f/--file or directly provide the filename
+        /// File to calculate hash, specify filename with -f/--file or directly provide the filename.
         #[arg(short, long)]
         file: Option<String>,
 
-        /// Direct text input for hash comparing
+        /// Direct text input for hash comparing.
         #[arg(short, long)]
         text: Option<String>,
 
-        /// Hash to compare with
+        /// Hash to compare with.
         #[arg(short, long)]
         check_hash: Option<String>,
     },
 
-    /// Check with given shasum file
+    /// Check with given shasum file.
     Check {
-        /// Optional algorithm to use for calculate hash
-        /// Leave blank to automatically detect the hash algorithm
+        /// Optional algorithm to use for calculate hash.
+        /// Leave blank to automatically detect the hash algorithm.
         /// Supported algorithms:
-        ///   * MD2(Unsafe)
-        ///   * MD4(Unsafe)
-        ///   * MD5(Unsafe)
-        ///   * SHA1(Unsafe)
-        ///   * SHA224
-        ///   * SHA256
-        ///   * SHA384
-        ///   * SHA512
+        ///  * MD2(Unsafe)
+        ///  * MD4(Unsafe)
+        ///  * MD5(Unsafe)
+        ///  * SHA1(Unsafe)
+        ///  * SHA224
+        ///  * SHA256
+        ///  * SHA384
+        ///  * SHA512
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
-        /// shasum file to check with
+        /// shasum file to check with.
         #[arg(short, long)]
         check_file: Option<String>,
     }
