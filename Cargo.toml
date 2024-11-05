@@ -1,0 +1,13 @@
+[package]
+name = "ezcheck"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+md2 = { version = "0.10" }
+md4 = { version = "0.10" }
+md-5 = { version = "0.10" }
+sha1 = { version = "0.10" }
+sha2 = { version = "0.10" }
+digest = { version = "0.10" }
+clap = { version = "4.5.20", features = ["derive"]}
