@@ -1,1 +1,5 @@
 /target
+/.idea
+
+# Example of big file
+/tests/win98.iso

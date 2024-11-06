@@ -1,18 +1,35 @@
+#[cfg(all(feature = "hashes_backend", feature = "ring_backend"))]
+compile_error!("Feature `hashes_backend` and feature `ring_backend` cannot be enabled at the same time.");
+#[cfg(not(any(feature = "hashes_backend", feature = "ring_backend")))]
+compile_error!("You must enable at least one of the features: 'hashes_backend' or 'ring_backend'.");
+
 use std::process;
 use clap::{Parser, Subcommand};
-use ezcheck::core::{ Calculate, Data, Compare, Compute, match_algorithm, phase_shasum_file };
-use ezcheck::calculator::calculator::SupportedAlgorithm;
-use ezcheck::extra::extra;
+use ezcheck::{ Calculate, Data, Compare, IfMatch, match_algorithm, phase_shasum_file };
+use ezcheck::calculator::SupportedAlgorithm;
+use ezcheck::extra;
 
+#[cfg(feature = "hashes_backend")]
 #[derive(Parser)]
 #[command(name = "ezcheck")]
-#[command(version = "0.1.0")]
+#[command(version = "0.1.1 (Hashes Backend)")]
 #[command(about = "An easy tool to calculate and check hash.\nMade with love by Heqi Liu, https://github.com/metaphorme")]
 struct Cli {
     #[command(subcommand)]
     args: Args,
 }
 
+#[cfg(feature = "ring_backend")]
+#[derive(Parser)]
+#[command(name = "ezcheck")]
+#[command(version = "0.1.1 (Ring Backend)")]
+#[command(about = "An easy tool to calculate and check hash.\nMade with love by Heqi Liu, https://github.com/metaphorme")]
+struct Cli {
+    #[command(subcommand)]
+    args: Args,
+}
+
+#[cfg(feature = "hashes_backend")]
 #[derive(Subcommand)]
 enum Args {
     /// Calculate hash for a file or text.
@@ -27,6 +44,7 @@ enum Args {
         ///  * SHA256(default)
         ///  * SHA384
         ///  * SHA512
+        ///  * SHA512/256
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
@@ -52,6 +70,7 @@ enum Args {
         ///  * SHA256
         ///  * SHA384
         ///  * SHA512
+        ///  * SHA512/256
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
@@ -81,6 +100,73 @@ enum Args {
         ///  * SHA256
         ///  * SHA384
         ///  * SHA512
+        ///  * SHA512/256
+        #[arg(verbatim_doc_comment)]
+        algorithm: Option<String>,
+
+        /// shasum file to check with.
+        #[arg(short, long)]
+        check_file: Option<String>,
+    }
+}
+
+#[cfg(feature = "ring_backend")]
+#[derive(Subcommand)]
+enum Args {
+    /// Calculate hash for a file or text.
+    Calculate {
+        /// Optional algorithm to use for calculate hash
+        /// Supported algorithms:
+        ///  * SHA256(default)
+        ///  * SHA384
+        ///  * SHA512
+        ///  * SHA512/256
+        #[arg(verbatim_doc_comment)]
+        algorithm: Option<String>,
+
+        /// File to calculate hash, specify filename with -f/--file or directly provide the filename.
+        #[arg(short, long)]
+        file: Option<String>,
+
+        /// Direct text input for hash calculation.
+        #[arg(short, long)]
+        text: Option<String>,
+    },
+
+    /// Compare with given hash.
+    Compare {
+        /// Optional algorithm to use for calculate hash.
+        /// Leave blank to automatically detect the hash algorithm.
+        /// Supported algorithms:
+        ///  * SHA256
+        ///  * SHA384
+        ///  * SHA512
+        ///  * SHA512/256
+        #[arg(verbatim_doc_comment)]
+        algorithm: Option<String>,
+
+        /// File to calculate hash, specify filename with -f/--file or directly provide the filename.
+        #[arg(short, long)]
+        file: Option<String>,
+
+        /// Direct text input for hash comparing.
+        #[arg(short, long)]
+        text: Option<String>,
+
+        /// Hash to compare with.
+        #[arg(short, long)]
+        check_hash: Option<String>,
+    },
+
+    /// Check with given shasum file.
+    Check {
+        /// Optional algorithm to use for calculate hash.
+        /// Leave blank to automatically detect the hash algorithm.
+        /// Supported algorithms:
+        ///  * SHA256
+        ///  * SHA384
+        ///  * SHA512
+        ///  * SHA512/256
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
@@ -219,7 +305,13 @@ fn main() {
 
                 let result = task.compute();
                 match result {
-                    Ok(result) => println!("{}", result),
+                    Ok(IfMatch::Match(message)) => {
+                        println!("{}", message);
+                        break;
+                    },
+                    Ok(IfMatch::Failed(message)) => {
+                        println!("{}", message);
+                    },
                     Err(e) => eprintln!("{}", e),
                 }
             }
@@ -228,23 +320,39 @@ fn main() {
         Args::Check { algorithm, check_file, } => {
             match check_file {
                 Some(f) => {
-                    let tasks =  match phase_shasum_file(
+                    match phase_shasum_file (
                         f,
                         detect_algorithm(algorithm),
                     ) {
-                        Ok(tasks) => tasks,
+                        Ok(tasks) => {
+                            let mut file_name = String::new();
+                            let mut file_matched = false;
+                            for task in tasks {
+                                if file_name == task.data.to_string() && file_matched == true {
+                                    continue;
+                                } else {
+                                    let result = task.compute();
+                                    match result {
+                                        Ok(IfMatch::Match(message))=> {
+                                            file_name = task.data.to_string();
+                                            file_matched = true;
+                                            println!("{}: {}", task.data, message);
+                                        },
+                                        Ok(IfMatch::Failed(message)) => {
+                                            file_name = task.data.to_string();
+                                            file_matched = false;
+                                            println!("{}: {}", task.data, message);
+                                        }
+                                        Err(e) => eprintln!("{}: {}", task.data, e),
+                                    }
+                                }
+                            }
+                        },
                         Err(e) => {
                             eprintln!("{}", e);
                             process::exit(1);
                         }
                     };
-                    for task in tasks {
-                        let result = task.compute();
-                        match result {
-                            Ok(result) => println!("{}: {}", task.data ,result),
-                            Err(e) => eprintln!("{}", e),
-                        }
-                    }
                 }
                 None => eprintln!("Must provide a check file.\nRun `ezcheck check --help` for more information."),
             }

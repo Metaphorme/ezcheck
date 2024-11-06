@@ -1,13 +1,28 @@
 [package]
 name = "ezcheck"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
+description = "An easy tool to calculate and check hash."
+repository = "https://github.com/Metaphorme/ezcheck"
+documentation = "https://docs.rs/ezcheck"
+readme = "README.md"
+authors = ["Heqi Liu 77@diazepam.cc"]
+license-file = "LICENSE"
+
+# MSRV
+rust-version = "1.71.0"
 
 [dependencies]
-md2 = { version = "0.10" }
-md4 = { version = "0.10" }
-md-5 = { version = "0.10" }
-sha1 = { version = "0.10" }
-sha2 = { version = "0.10" }
-digest = { version = "0.10" }
-clap = { version = "4.5.20", features = ["derive"]}
+md2 = { version = "0.10", optional = true }
+md4 = { version = "0.10", optional = true }
+md-5 = { version = "0.10", optional = true }
+sha1 = { version = "0.10", optional = true }
+sha2 = { version = "0.10", optional = true }
+digest = { version = "0.10", optional = true }
+ring = { version = "0.17" , optional = true }
+clap = { version = "4.5", features = ["derive"]}
+
+[features]
+default = []
+hashes_backend = ["md2", "md4", "md-5", "sha1", "sha2", "digest"]
+ring_backend = ["ring"]
