@@ -11,6 +11,8 @@ ezcheck have two backends: [ring](https://docs.rs/ring) and [hashes](https://doc
 | Implement languages  | Assembly, Rust, C and etc..                                | Rust                                                            |
 | Compatibility        | May not work on every machine with different architecture. | Works well with Rust.                                           |
 
+❗️ To achieve maximum compatibility, the default backend is **hashes backend**.
+
 ⚠️ Please notice that although ezcheck(hashes backend) supports a lot of hash algorithms, `MD2`, `MD4`, `MD5`, `SHA1` are proven to be **insecure**. ezcheck still provides them for maximum compatibility, but **it does not recommend users continue to use them**. 
 
 ## Build
@@ -24,11 +26,11 @@ ezcheck have two backends: [ring](https://docs.rs/ring) and [hashes](https://doc
 ```bash
 $ git clone https://github.com/Metaphorme/ezcheck
 $ cd ezcheck
-$ # Choose one from ring backend or hashes backend
-$ # ring backend
-$ cargo build --release --features ring_backend
+$ # Choose one from hashes backend or ring backend
 $ # hashes backend
 $ cargo build --release --features hashes_backend
+$ # ring backend
+$ cargo build --release --no-default-features --features ring_backend
 $
 $ ./target/release/ezcheck --version
 ```
@@ -36,8 +38,8 @@ $ ./target/release/ezcheck --version
 ### Run tests
 
 ```bash
-$ cargo test --features ring_backend    # ring backend
 $ cargo test --features hashes_backend  # hashes backend
+$ cargo test --no-default-features  --features ring_backend    # ring backend
 ```
 
 ## Usage
