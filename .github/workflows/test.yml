@@ -1,0 +1,32 @@
+name: Test
+
+on:
+  push:
+    branches: [ "master" ]
+    paths-ignore: [ "README.md", "LICENSE" ]
+  pull_request:
+    branches: [ "master" ]
+    paths-ignore: [ "README.md", "LICENSE" ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Rust toolchain
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+    
+    - name: Test hashes backend
+      run: cargo test --features hashes_backend
+
+    - name: Test ring backend
+      run: cargo test --no-default-features  --features ring_backend
