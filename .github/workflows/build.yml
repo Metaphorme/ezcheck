@@ -59,8 +59,14 @@ jobs:
     - name: Build
       run: cargo build --release --no-default-features --features ${{ matrix.backend }} --target ${{ matrix.config.target }}
 
+    - name: Crate directory to upload
+      run: |
+        mkdir upload
+        cp target/${{matrix.config.target}}/release/ezcheck* upload/
+        cp LICENSE upload/
+      
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}
-        path: target/${{matrix.config.target}}/release/ezcheck($|.exe)
+        path: upload/*
