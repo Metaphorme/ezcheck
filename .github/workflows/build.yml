@@ -79,7 +79,8 @@ jobs:
       run: |
         cp LICENSE ezcheck/
         cd ezcheck
-        sha256sum * > sha256sum.txt
+        sha256sum ezcheck* > sha256sum.txt
+        sha256sum LICENSE >> sha256sum.txt
 
     - if: matrix.config.os == 'windows-latest'
       run: Compress-Archive -Path .\ezcheck\* -DestinationPath .\ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}.zip
