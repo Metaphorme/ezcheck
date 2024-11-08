@@ -64,6 +64,9 @@ jobs:
         mkdir upload
         cp target/${{matrix.config.target}}/release/ezcheck* upload/
         cp LICENSE upload/
+        cd upload
+        rm ezcheck.d
+        sha256sum * > sha256sum.txt
       
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
