@@ -1,0 +1,68 @@
+name: Build
+
+on:
+  push:
+    branches: [ "master" ]
+    paths-ignore: [ "README.md", "LICENSE" ]
+  pull_request:
+    branches: [ "master" ]
+    paths-ignore: [ "README.md", "LICENSE" ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        backend: ["hashes_backend", "ring_backend"]
+        config:
+          - { target: x86_64-unknown-linux-gnu, os: ubuntu-latest }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-latest }
+          - { target: i686-unknown-linux-gnu, os: ubuntu-latest }
+          - { target: x86_64-pc-windows-msvc, os: windows-latest }
+          - { target: x86_64-pc-windows-gnu, os: windows-latest }
+          - { target: i686-pc-windows-msvc, os: windows-latest }
+          - { target: i686-pc-windows-gnu, os: windows-latest }
+          - { target: aarch64-apple-darwin, os: macos-latest }
+          - { target: x86_64-apple-darwin, os: macos-latest }
+    
+    name: ${{ matrix.config.target }}
+    runs-on: ${{ matrix.config.os }}
+    continue-on-error: true
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - if: matrix.config.target == 'i686-unknown-linux-gnu' || matrix.config.target == 'aarch64-unknown-linux-gnu'
+      run: |
+        sudo apt update
+        sudo apt install -y gcc-i686-linux-gnu gcc-aarch64-linux-gnu
+
+        echo "CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=i686-linux-gnu-gcc" >> $GITHUB_ENV
+        echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+    - if: matrix.config.target == 'i686-pc-windows-gnu'
+      run: |
+        Invoke-WebRequest -Uri https://github.com/niXman/mingw-builds-binaries/releases/download/14.2.0-rt_v12-rev0/i686-14.2.0-release-posix-dwarf-msvcrt-rt_v12-rev0.7z -OutFile mingw32.7z
+        7z x mingw32.7z -oC:\mingw32
+        echo "C:\mingw32\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
+
+    - name: Setup Rust toolchain
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+        target: ${{ matrix.config.target }}
+    
+    - name: Build
+      run: cargo build --release --no-default-features --features ${{ matrix.backend }} --target ${{ matrix.config.target }}
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}
+        path: |
+          target/release/ezcheck
+          target/release/ezcheck.exe
