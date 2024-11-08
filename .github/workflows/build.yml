@@ -32,6 +32,8 @@ jobs:
     
     name: ${{ matrix.config.target }}-${{ matrix.backend }}
     runs-on: ${{ matrix.config.os }}
+    permissions:
+      contents: write
     continue-on-error: true
 
     steps:
