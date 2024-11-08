@@ -62,14 +62,20 @@ jobs:
     - name: Build
       run: cargo build --release --no-default-features --features ${{ matrix.backend }} --target ${{ matrix.config.target }}
 
-    - name: Crate directory to upload
+    - if: matrix.config.os == 'windows-latest'
       run: |
         mkdir upload
-        cp target/${{matrix.config.target}}/release/ezcheck* upload/
+        cp target/${{matrix.config.target}}/release/ezcheck.exe upload/
+
+    - if: matrix.config.os != 'windows-latest'
+      run: |
+        mkdir upload
+        cp target/${{matrix.config.target}}/release/ezcheck upload/
+    
+    - name: Add license and Gerenate sha256
+      run: |
         cp LICENSE upload/
         cd upload
-        rm ezcheck.d
-        rm ezcheck.pdb
         sha256sum * > sha256sum.txt
       
     - name: Upload Artifacts
