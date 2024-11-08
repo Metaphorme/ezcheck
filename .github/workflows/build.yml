@@ -7,6 +7,7 @@ on:
   pull_request:
     branches: [ "master" ]
     paths-ignore: [ "README.md", "LICENSE" ]
+  release:
   workflow_dispatch:
 
 env:
@@ -64,22 +65,46 @@ jobs:
 
     - if: matrix.config.os == 'windows-latest'
       run: |
-        mkdir upload
-        cp target/${{matrix.config.target}}/release/ezcheck.exe upload/
+        mkdir ezcheck
+        cp target/${{matrix.config.target}}/release/ezcheck.exe ezcheck/
 
     - if: matrix.config.os != 'windows-latest'
       run: |
-        mkdir upload
-        cp target/${{matrix.config.target}}/release/ezcheck upload/
+        mkdir ezcheck
+        cp target/${{matrix.config.target}}/release/ezcheck ezcheck/
     
     - name: Add license and Gerenate sha256
       run: |
-        cp LICENSE upload/
-        cd upload
+        cp LICENSE ezcheck/
+        cd ezcheck
         sha256sum * > sha256sum.txt
+
+    - if: matrix.config.os == 'windows-latest'
+      run: Compress-Archive -Path .\ezcheck\* -DestinationPath .\ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}.zip
+
+    - if: matrix.config.os != 'windows-latest'
+      run: tar -czvf ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}.tar.gz -C ezcheck .
       
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}
-        path: upload/*
+        path: ezcheck/*
+        
+    - name: Upload to GitHub Release
+      uses: svenstaro/upload-release-action@v2
+      if: github.event_name == 'release' && matrix.config.os == 'windows-latest'
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        overwrite: true
+        file: ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}.zip
+
+    - name: Upload to GitHub Release
+      uses: svenstaro/upload-release-action@v2
+      if: github.event_name == 'release' && matrix.config.os != 'windows-latest'
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        overwrite: true
+        file: ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}.tar.gz
