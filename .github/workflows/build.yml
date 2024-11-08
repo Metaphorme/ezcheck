@@ -29,7 +29,7 @@ jobs:
           - { target: aarch64-apple-darwin, os: macos-latest }
           - { target: x86_64-apple-darwin, os: macos-latest }
     
-    name: ${{ matrix.config.target }}
+    name: ${{ matrix.config.target }}-${{ matrix.backend }}
     runs-on: ${{ matrix.config.os }}
     continue-on-error: true
 
@@ -63,6 +63,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}
-        path: |
-          target/release/ezcheck
-          target/release/ezcheck.exe
+        path: target/release/ezcheck($|.exe)
