@@ -63,4 +63,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}
-        path: target/release/ezcheck($|.exe)
+        path: target/${{matrix.config.target}}/release/ezcheck($|.exe)
