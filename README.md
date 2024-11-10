@@ -15,17 +15,32 @@ ezcheck have two backends: [ring](https://docs.rs/ring) and [hashes](https://doc
 
 ⚠️ Please notice that although ezcheck(hashes backend) supports a lot of hash algorithms, `MD2`, `MD4`, `MD5`, `SHA1` are proven to be **insecure**. ezcheck still provides them for maximum compatibility, but **it does not recommend users continue to use them**. 
 
-## Build
+## Setup
 
-### Requirements
+### Install from binary
+
+Download suitable binary from [Releases](https://github.com/Metaphorme/ezcheck/releases).
+
+### Install from Cargo
+
+```bash
+$ # hashes backend
+$ cargo install ezcheck
+$ # ring backend
+$ cargo install ezcheck --no-default-features --features ring_backend
+```
+
+
+### Build from source
+
+#### Requirements
 
 * [Rust 1.71.0+](https://www.rust-lang.org/)
 
-### Build
+#### Build
 
 ```bash
-$ git clone https://github.com/Metaphorme/ezcheck
-$ cd ezcheck
+$ git clone https://github.com/Metaphorme/ezcheck && cd ezcheck
 $ # Choose one from hashes backend or ring backend
 $ # hashes backend
 $ cargo build --release --features hashes_backend
@@ -35,9 +50,10 @@ $
 $ ./target/release/ezcheck --version
 ```
 
-### Run tests
+## Run tests
 
 ```bash
+$ git clone https://github.com/Metaphorme/ezcheck && cd ezcheck
 $ cargo test --features hashes_backend  # hashes backend
 $ cargo test --no-default-features  --features ring_backend  # ring backend
 ```
@@ -70,18 +86,18 @@ Usage:
 Examples:
 $ ezcheck calculate sha256 -f image.jpg
 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f  image.jpg
-
+$
 $ cat image.jpg | ezcheck calculate sha256 -f -
 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f  -
-
+$
 $ ezcheck calculate sha256 -t "Hello"
 SHA256:  185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
-
+$
 $ ezcheck calculate -f image.jpg
 No algorithm specified. Using SHA256 as the default.
 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f  image.jpg
-
-# We could also redirect the output into a file, just like shasum does.
+$
+$ # We could also redirect the output into a file, just like shasum does.
 $ ezcheck calculate sha256 -f image.jpg > sha256sum.txt
 ```
 
@@ -96,14 +112,14 @@ Usage:
 Examples:
 $ ezcheck compare sha256 -f image.jpg -c 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f
 SHA256 OK
-
+$
 $ cat image.jpg | ezcheck compare sha256 -f - -c 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f                           
 SHA256 OK
-
+$
 $ ezcheck compare sha256 -t "Hello" -c 085f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
 SHA256 FAILED  Current Hash:  185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
-
-# Auto detect hash algorithm
+$
+$ # Auto detect hash algorithm
 $ ezcheck compare -f image.jpg -c bebc102992450c68e5543383889e27c9
 INFO: Hash Algorithm could be MD5, MD4, MD2
 MD5 FAILED  Current Hash:  cb74bb502cc0949aad5cd838f91f0623
@@ -131,8 +147,8 @@ Example:
 $ ezcheck check sha256 -c sha256sum.txt 
 滕王阁序.txt: SHA256 OK
 image.jpg: SHA256 OK
-
-# Auto detect hash algorithm
+$
+$ # Auto detect hash algorithm
 $ cat sha256sum.txt
 9ec44ac67ab1e1c98fe0406478d5297d  滕王阁序.txt
 bebc102992450c68e5543383889e27c9  image.jpg
@@ -141,14 +157,14 @@ $ ezcheck check -c sha256sum.txt
 滕王阁序.txt: MD4 OK
 image.jpg: MD5 FAILED  Current Hash:  cb74bb502cc0949aad5cd838f91f0623
 image.jpg: MD4 OK
-
-# Actually, ezcheck supports various algorithm in the same check file in auto detect.
-# 🤔 But why this happens?
+$
+$ # Actually, ezcheck supports various algorithm in the same check file in auto detect.
+$ # 🤔 But why this happens?
 $ cat sha256sum.txt
 00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95  滕王阁序.txt
 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f *image.jpg
 9ec44ac67ab1e1c98fe0406478d5297d  滕王阁序.txt
-
+$
 $ ezcheck check -c sha256sum.txt
 滕王阁序.txt: SHA256 OK
 image.jpg: SHA256 OK
