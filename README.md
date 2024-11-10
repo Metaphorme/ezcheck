@@ -172,6 +172,40 @@ image.jpg: SHA256 OK
 滕王阁序.txt: MD4 OK
 ```
 
+## Benchmark
+
+### Method
+
+* Device: MacBook Air M1 8GB
+
+* Steps:
+
+1. Run 3 times:
+    ```bash
+    $ count = 10000  # Test size = 1M * $count
+    $ # Bare
+    $ dd if=/dev/zero bs=1M count=$count | pv > /dev/null
+    $ # ezcheck-hashes
+    $ dd if=/dev/zero bs=1M count=$count | pv | ./ezcheck-hashes calculate sha256 -f -
+    $ # ezcheck-ring
+    $ dd if=/dev/zero bs=1M count=$count | pv | ./ezcheck-ring calculate sha256 -f -
+    $ # sha256sum
+    $ dd if=/dev/zero bs=1M count=$count | pv | sha256sum
+    ```
+
+2. Calculate the average value.
+
+### Result
+
+| Command/Speed(GiB/s)/Test size(M) | 1    | 100  | 500  | 1000 | 5000 | 10000 |
+|-----------------------------------|------|------|------|------|------|-------|
+| Bare                              | 2.13 | 3.02 | 4.59 | 5.31 | 5.97 | 6.07  |
+| ezcheck-hashes                    | 0.13 | 0.28 | 0.29 | 0.30 | 0.30 | 0.30  |
+| ezcheck-ring                      | 0.58 | 1.24 | 1.57 | 1.63 | 1.68 | 1.68  |
+| sha256sum                         | 0.73 | 1.26 | 1.63 | 1.69 | 1.75 | 1.81  |
+
+![benchmark](benchmark.png)
+
 ## License
 
 ```
