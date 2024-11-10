@@ -65,11 +65,14 @@ Calculate hash for a file or text.
 
 ```bash
 Usage:
-    ezcheck calculate [ALGORITHM (Default SHA256)] (-f file | -t text)
+    ezcheck calculate [ALGORITHM (Default SHA256)] (-f file/"-" for standard input | -t text)
 
 Examples:
 $ ezcheck calculate sha256 -f image.jpg
 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f  image.jpg
+
+$ cat image.jpg | ezcheck calculate sha256 -f -
+4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f  -
 
 $ ezcheck calculate sha256 -t "Hello"
 SHA256:  185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
@@ -88,10 +91,13 @@ Compare with given hash.
 
 ```bash
 Usage:
-  ezcheck compare [ALGORITHM (Leave blank to automatically detect algorithm)] (-f file | -t text) -c hash
+  ezcheck compare [ALGORITHM (Leave blank to automatically detect algorithm)] (-f file/"-" for standard input | -t text) -c hash
   
 Examples:
 $ ezcheck compare sha256 -f image.jpg -c 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f
+SHA256 OK
+
+$ cat image.jpg | ezcheck compare sha256 -f - -c 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f                           
 SHA256 OK
 
 $ ezcheck compare sha256 -t "Hello" -c 085f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969

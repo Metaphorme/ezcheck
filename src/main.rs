@@ -34,7 +34,7 @@ struct Cli {
 enum Args {
     /// Calculate hash for a file or text.
     Calculate {
-        /// Optional algorithm to use for calculate hash
+        /// Optional algorithm to use for calculate hash.
         /// Supported algorithms:
         ///  * MD2(Unsafe)
         ///  * MD4(Unsafe)
@@ -48,7 +48,7 @@ enum Args {
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
-        /// File to calculate hash, specify filename with -f/--file or directly provide the filename.
+        /// File to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
         #[arg(short, long)]
         file: Option<String>,
 
@@ -74,7 +74,7 @@ enum Args {
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
-        /// File to calculate hash, specify filename with -f/--file or directly provide the filename.
+        /// File to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
         #[arg(short, long)]
         file: Option<String>,
 
@@ -124,7 +124,7 @@ enum Args {
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
-        /// File to calculate hash, specify filename with -f/--file or directly provide the filename.
+        /// File to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
         #[arg(short, long)]
         file: Option<String>,
 
@@ -145,7 +145,7 @@ enum Args {
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
-        /// File to calculate hash, specify filename with -f/--file or directly provide the filename.
+        /// File to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
         #[arg(short, long)]
         file: Option<String>,
 
