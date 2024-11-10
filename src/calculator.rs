@@ -4,7 +4,7 @@ compile_error!("Feature `hashes_backend` and feature `ring_backend` cannot be en
 compile_error!("You must enable at least one of the features: 'hashes_backend' or 'ring_backend'.");
 
 use std::fmt;
-use std::io::{BufReader, Error, Read};
+use std::io::{BufRead, Error};
 use crate::extra::bytes_to_hex;
 
 #[cfg(feature = "hashes_backend")]
@@ -50,8 +50,8 @@ impl fmt::Display for SupportedAlgorithm {
 }
 
 #[cfg(feature = "hashes_backend")]
-pub fn hash_calculator<R: Read>(
-    mut reader: BufReader<R>,
+pub fn hash_calculator<R: BufRead>(
+    mut reader: R,
     algorithm: SupportedAlgorithm)
 -> Result<String, Error> {
 
@@ -110,8 +110,8 @@ impl fmt::Display for SupportedAlgorithm {
 }
 
 #[cfg(feature = "ring_backend")]
-pub fn hash_calculator<R: Read>(
-    mut reader: BufReader<R>,
+pub fn hash_calculator<R: BufRead>(
+    mut reader: R,
     algorithm: SupportedAlgorithm)
 -> Result<String, Error> {
     let mut hasher: Context = match algorithm {

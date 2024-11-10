@@ -39,7 +39,7 @@ $ ./target/release/ezcheck --version
 
 ```bash
 $ cargo test --features hashes_backend  # hashes backend
-$ cargo test --no-default-features  --features ring_backend    # ring backend
+$ cargo test --no-default-features  --features ring_backend  # ring backend
 ```
 
 ## Usage

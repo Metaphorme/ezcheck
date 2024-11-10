@@ -7,7 +7,7 @@ pub mod calculator;
 pub mod extra;
 use std::fmt;
 use std::fs::File;
-use std::io::{stdin, Read, BufRead, BufReader};
+use std::io::{stdin, BufRead, BufReader};
 
 pub struct Calculate {
     data: Data,
@@ -99,18 +99,22 @@ impl ComputeHash for Data {
     fn compute_hash(&self, algorithm: calculator::SupportedAlgorithm) -> Result<String, String> {
         match self {
             Data::ReadFile(path) => {
-                let reader: BufReader<Box<dyn Read>>;
-                if path == "-" {
-                    // Read from standard input
-                    reader = BufReader::new(Box::new(stdin()) as Box<dyn Read>);
-                } else {
-                    // Try to open the file
-                    let file = File::open(path).map_err(|e| format!("Error: Error opening file: {}", e))?;
-                    reader = BufReader::new(Box::new(file) as Box<dyn Read>);
-                }
-                match calculator::hash_calculator(reader, algorithm) {
-                    Ok(hash) => Ok(hash),
-                    Err(e) => Err(format!("Error: Error calculating hash: {}", e)),
+                if path == "-" {  // Input from standard input
+                    let stdin_lock = stdin().lock();
+                    match calculator::hash_calculator(stdin_lock, algorithm) {
+                        Ok(hash) => Ok(hash),
+                        Err(e) => Err(format!("Error: Error calculating hash: {}", e)),
+                    }
+                } else {  // Input from file
+                    let file = match File::open(path) {
+                        Ok(file) => file,
+                        Err(e) => return Err(format!("Error: Error opening file: {}", e)),
+                    };
+                    let reader = BufReader::new(file);
+                    match calculator::hash_calculator(reader, algorithm) {
+                        Ok(hash) => Ok(hash),
+                        Err(e) => Err(format!("Error: Error calculating hash: {}", e)),
+                    }
                 }
             }
             Data::Text(text) => {
