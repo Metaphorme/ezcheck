@@ -1,5 +1,7 @@
 #[cfg(all(feature = "hashes_backend", feature = "ring_backend"))]
-compile_error!("Feature `hashes_backend` and feature `ring_backend` cannot be enabled at the same time.");
+compile_error!(
+    "Feature `hashes_backend` and feature `ring_backend` cannot be enabled at the same time."
+);
 #[cfg(not(any(feature = "hashes_backend", feature = "ring_backend")))]
 compile_error!("You must enable at least one of the features: 'hashes_backend' or 'ring_backend'.");
 
@@ -16,10 +18,7 @@ pub struct Calculate {
 
 impl Calculate {
     pub fn new(data: Data, algorithm: calculator::SupportedAlgorithm) -> Calculate {
-        Self {
-            data,
-            algorithm,
-        }
+        Self { data, algorithm }
     }
 }
 
@@ -71,13 +70,16 @@ impl Compare {
         if hash_result == self.compare {
             Ok(IfMatch::Match(format!("{:8} OK", self.algorithm)))
         } else {
-            Ok(IfMatch::Failed(format!("{:8} FAILED  Current Hash:  {}", self.algorithm, hash_result)))
+            Ok(IfMatch::Failed(format!(
+                "{:8} FAILED  Current Hash:  {}",
+                self.algorithm, hash_result
+            )))
         }
     }
 }
 
 pub enum Data {
-    ReadFile(String),  // Input data from a file
+    ReadFile(String), // Input data from a file
     Text(String),     // Input data from user input
 }
 
@@ -99,16 +101,18 @@ impl ComputeHash for Data {
     fn compute_hash(&self, algorithm: calculator::SupportedAlgorithm) -> Result<String, String> {
         match self {
             Data::ReadFile(path) => {
-                if path == "-" {  // Input from standard input
+                if path == "-" {
+                    // Input from standard input
                     let stdin_lock = stdin().lock();
                     match calculator::hash_calculator(stdin_lock, algorithm) {
                         Ok(hash) => Ok(hash),
                         Err(e) => Err(format!("Error: Error calculating hash: {}", e)),
                     }
-                } else {  // Input from file
+                } else {
+                    // Input from file
                     let file = match File::open(path) {
                         Ok(file) => file,
-                        Err(e) => return Err(format!("Error: Error opening file: {}", e)),
+                        Err(e) => return Err(format!("Error: Cannot opening file {}: {}", path, e)),
                     };
                     let reader = BufReader::new(file);
                     match calculator::hash_calculator(reader, algorithm) {
@@ -129,39 +133,68 @@ impl ComputeHash for Data {
 }
 
 #[cfg(feature = "hashes_backend")]
-pub fn match_algorithm<S: AsRef<str>>(algorithm: S) -> Result<calculator::SupportedAlgorithm, String> {
+pub fn match_algorithm<S: AsRef<str>>(
+    algorithm: S,
+) -> Result<calculator::SupportedAlgorithm, String> {
     let algorithm = algorithm.as_ref();
 
     match algorithm {
         "MD2" | "Md2" | "mD2" | "md2" => Ok(calculator::SupportedAlgorithm::MD2),
         "MD4" | "Md4" | "mD4" | "md4" => Ok(calculator::SupportedAlgorithm::MD4),
         "MD5" | "Md5" | "mD5" | "md5" => Ok(calculator::SupportedAlgorithm::MD5),
-        "sha1" | "Sha1" | "sHa1" | "shA1" | "SHa1" | "sHA1" | "ShA1" | "SHA1" => Ok(calculator::SupportedAlgorithm::SHA1),
-        "sha224" | "Sha224" | "sHa224" | "shA224" | "SHa224" | "sHA224" | "ShA224" | "SHA224" => Ok(calculator::SupportedAlgorithm::SHA224),
-        "sha256" | "Sha256" | "sHa256" | "shA256" | "SHa256" | "sHA256" | "ShA256" | "SHA256" => Ok(calculator::SupportedAlgorithm::SHA256),
-        "sha384" | "Sha384" | "sHa384" | "shA384" | "SHa384" | "sHA384" | "ShA384" | "SHA384" => Ok(calculator::SupportedAlgorithm::SHA384),
-        "sha512" | "Sha512" | "sHa512" | "shA512" | "SHa512" | "sHA512" | "ShA512" | "SHA512" => Ok(calculator::SupportedAlgorithm::SHA512),
-        "sha512_256" | "Sha512_256" | "sHa512_256" | "shA512_256" | "SHa512_256" | "sHA512_256" | "ShA512_256" | "SHA512_256" | "sha512-256" | "Sha512-256" | "sHa512-256" | "shA512-256" | "SHa512-256" | "sHA512-256" | "ShA512-256" | "SHA512-256" => Ok(calculator::SupportedAlgorithm::SHA512_256),
+        "sha1" | "Sha1" | "sHa1" | "shA1" | "SHa1" | "sHA1" | "ShA1" | "SHA1" => {
+            Ok(calculator::SupportedAlgorithm::SHA1)
+        }
+        "sha224" | "Sha224" | "sHa224" | "shA224" | "SHa224" | "sHA224" | "ShA224" | "SHA224" => {
+            Ok(calculator::SupportedAlgorithm::SHA224)
+        }
+        "sha256" | "Sha256" | "sHa256" | "shA256" | "SHa256" | "sHA256" | "ShA256" | "SHA256" => {
+            Ok(calculator::SupportedAlgorithm::SHA256)
+        }
+        "sha384" | "Sha384" | "sHa384" | "shA384" | "SHa384" | "sHA384" | "ShA384" | "SHA384" => {
+            Ok(calculator::SupportedAlgorithm::SHA384)
+        }
+        "sha512" | "Sha512" | "sHa512" | "shA512" | "SHa512" | "sHA512" | "ShA512" | "SHA512" => {
+            Ok(calculator::SupportedAlgorithm::SHA512)
+        }
+        "sha512_256" | "Sha512_256" | "sHa512_256" | "shA512_256" | "SHa512_256" | "sHA512_256"
+        | "ShA512_256" | "SHA512_256" | "sha512-256" | "Sha512-256" | "sHa512-256"
+        | "shA512-256" | "SHa512-256" | "sHA512-256" | "ShA512-256" | "SHA512-256" => {
+            Ok(calculator::SupportedAlgorithm::SHA512_256)
+        }
         _ => Err(format!("Error: Unsupported algorithm: {}", algorithm)),
     }
 }
 
 #[cfg(feature = "ring_backend")]
-pub fn match_algorithm<S: AsRef<str>>(algorithm: S) -> Result<calculator::SupportedAlgorithm, String> {
+pub fn match_algorithm<S: AsRef<str>>(
+    algorithm: S,
+) -> Result<calculator::SupportedAlgorithm, String> {
     let algorithm = algorithm.as_ref();
 
     match algorithm {
-        "sha256" | "Sha256" | "sHa256" | "shA256" | "SHa256" | "sHA256" | "ShA256" | "SHA256" => Ok(calculator::SupportedAlgorithm::SHA256),
-        "sha384" | "Sha384" | "sHa384" | "shA384" | "SHa384" | "sHA384" | "ShA384" | "SHA384" => Ok(calculator::SupportedAlgorithm::SHA384),
-        "sha512" | "Sha512" | "sHa512" | "shA512" | "SHa512" | "sHA512" | "ShA512" | "SHA512" => Ok(calculator::SupportedAlgorithm::SHA512),
-        "sha512_256" | "Sha512_256" | "sHa512_256" | "shA512_256" | "SHa512_256" | "sHA512_256" | "ShA512_256" | "SHA512_256" | "sha512-256" | "Sha512-256" | "sHa512-256" | "shA512-256" | "SHa512-256" | "sHA512-256" | "ShA512-256" | "SHA512-256" => Ok(calculator::SupportedAlgorithm::SHA512_256),
+        "sha256" | "Sha256" | "sHa256" | "shA256" | "SHa256" | "sHA256" | "ShA256" | "SHA256" => {
+            Ok(calculator::SupportedAlgorithm::SHA256)
+        }
+        "sha384" | "Sha384" | "sHa384" | "shA384" | "SHa384" | "sHA384" | "ShA384" | "SHA384" => {
+            Ok(calculator::SupportedAlgorithm::SHA384)
+        }
+        "sha512" | "Sha512" | "sHa512" | "shA512" | "SHa512" | "sHA512" | "ShA512" | "SHA512" => {
+            Ok(calculator::SupportedAlgorithm::SHA512)
+        }
+        "sha512_256" | "Sha512_256" | "sHa512_256" | "shA512_256" | "SHa512_256" | "sHA512_256"
+        | "ShA512_256" | "SHA512_256" | "sha512-256" | "Sha512-256" | "sHa512-256"
+        | "shA512-256" | "SHa512-256" | "sHA512-256" | "ShA512-256" | "SHA512-256" => {
+            Ok(calculator::SupportedAlgorithm::SHA512_256)
+        }
         _ => Err(format!("Error: Unsupported algorithm: {}", algorithm)),
     }
 }
 
-pub fn phase_shasum_file<S: AsRef<str>>
-(shasum_file_path: S, algorithm: Option<calculator::SupportedAlgorithm>)
-    -> Result<Vec<Compare>, String> {
+pub fn phase_shasum_file<S: AsRef<str>>(
+    shasum_file_path: S,
+    algorithm: Option<calculator::SupportedAlgorithm>,
+) -> Result<Vec<Compare>, String> {
     /*
     Example shasum file:
         ee1fb7719c31070f1fbdc8f2d32370c9d1ca6962  image.png
@@ -176,7 +209,7 @@ pub fn phase_shasum_file<S: AsRef<str>>
 
     let file = match File::open(shasum_file_path) {
         Ok(file) => file,
-        Err(error) => return Err(format!("Error: Error opening file: {}", error)),
+        Err(error) => return Err(format!("Error: Cannot opening file {}: {}", shasum_file_path, error)),
     };
     let reader = BufReader::new(file);
 
@@ -184,23 +217,22 @@ pub fn phase_shasum_file<S: AsRef<str>>
 
     for line in reader.lines() {
         let line = line.unwrap();
-        let parts: Vec<&str> = line.split_whitespace().collect();  // Split
+        let parts: Vec<&str> = line.split_whitespace().collect(); // Split
 
         if parts.len() == 2 {
             let hash = parts[0];
             let mut file_path = parts[1].to_string();
 
             let algorithms = match detect_algorithm {
-                true => {
-                    match extra::detect_hash_algorithm(hash) {
-                        Ok(result) => result,
-                        Err(e) => return Err(format!("{} {}", e, hash)),
-                    }
-                }
-                false => vec![algorithm.unwrap()]
+                true => match extra::detect_hash_algorithm(hash) {
+                    Ok(result) => result,
+                    Err(e) => return Err(format!("{} {}", e, hash)),
+                },
+                false => vec![algorithm.unwrap()],
             };
 
-            if file_path.starts_with("*") {  // Neglect * starts with filename
+            if file_path.starts_with("*") {
+                // Neglect * starts with filename
                 file_path.remove(0);
             }
 
@@ -211,8 +243,8 @@ pub fn phase_shasum_file<S: AsRef<str>>
                     algorithm,
                 ));
             }
-
-        } else if parts.is_empty() {  // Blank line
+        } else if parts.is_empty() {
+            // Blank line
             continue;
         } else {
             return Err("Error: Not a valid shasum file.".to_string());
@@ -258,10 +290,7 @@ mod test_core {
             String::from("00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95"),
             calculator::SupportedAlgorithm::SHA256,
         );
-        assert_eq!(
-            task.compute().unwrap(),
-            Match("".to_string())
-        )
+        assert_eq!(task.compute().unwrap(), Match("".to_string()))
     }
 
     #[test]
@@ -271,10 +300,7 @@ mod test_core {
             String::from("a1610284c94bbf9aa78333e57ddce234a5e845d61e09ce91a7e19fa24737f466"),
             calculator::SupportedAlgorithm::SHA256,
         );
-        assert_eq!(
-            task.compute().unwrap(),
-            Failed(String::from(""))
-        )
+        assert_eq!(task.compute().unwrap(), Failed(String::from("")))
     }
 
     // This test is only available in tests dir.

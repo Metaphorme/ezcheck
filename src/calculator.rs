@@ -1,11 +1,13 @@
 #[cfg(all(feature = "hashes_backend", feature = "ring_backend"))]
-compile_error!("Feature `hashes_backend` and feature `ring_backend` cannot be enabled at the same time.");
+compile_error!(
+    "Feature `hashes_backend` and feature `ring_backend` cannot be enabled at the same time."
+);
 #[cfg(not(any(feature = "hashes_backend", feature = "ring_backend")))]
 compile_error!("You must enable at least one of the features: 'hashes_backend' or 'ring_backend'.");
 
+use crate::extra::bytes_to_hex;
 use std::fmt;
 use std::io::{BufRead, Error};
-use crate::extra::bytes_to_hex;
 
 #[cfg(feature = "hashes_backend")]
 use digest::DynDigest;
@@ -52,9 +54,8 @@ impl fmt::Display for SupportedAlgorithm {
 #[cfg(feature = "hashes_backend")]
 pub fn hash_calculator<R: BufRead>(
     mut reader: R,
-    algorithm: SupportedAlgorithm)
--> Result<String, Error> {
-
+    algorithm: SupportedAlgorithm,
+) -> Result<String, Error> {
     let mut hasher: Box<dyn DynDigest> = match algorithm {
         SupportedAlgorithm::MD2 => Box::new(md2::Md2::default()),
         SupportedAlgorithm::MD4 => Box::new(md4::Md4::default()),
@@ -72,7 +73,7 @@ pub fn hash_calculator<R: BufRead>(
         match reader.read(&mut buffer) {
             Ok(read_bytes) => {
                 if read_bytes == 0 {
-                    break;  // Finish reading the file
+                    break; // Finish reading the file
                 }
                 hasher.update(&buffer[..read_bytes]);
             }
@@ -112,8 +113,8 @@ impl fmt::Display for SupportedAlgorithm {
 #[cfg(feature = "ring_backend")]
 pub fn hash_calculator<R: BufRead>(
     mut reader: R,
-    algorithm: SupportedAlgorithm)
--> Result<String, Error> {
+    algorithm: SupportedAlgorithm,
+) -> Result<String, Error> {
     let mut hasher: Context = match algorithm {
         SupportedAlgorithm::SHA256 => Context::new(&SHA256),
         SupportedAlgorithm::SHA384 => Context::new(&SHA384),
@@ -126,7 +127,7 @@ pub fn hash_calculator<R: BufRead>(
         match reader.read(&mut buffer) {
             Ok(read_bytes) => {
                 if read_bytes == 0 {
-                    break;  // Finish reading the file
+                    break; // Finish reading the file
                 }
                 hasher.update(&buffer[..read_bytes]);
             }
@@ -141,9 +142,9 @@ pub fn hash_calculator<R: BufRead>(
 
 #[cfg(test)]
 mod test_calculator {
-    use std::io::BufReader;
-    use std::fs::File;
     use super::*;
+    use std::fs::File;
+    use std::io::BufReader;
 
     const TEST_WORD: &[u8; 16] = b"Veni, vidi, vici";
 

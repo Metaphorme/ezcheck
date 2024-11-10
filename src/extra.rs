@@ -1,10 +1,12 @@
 #[cfg(all(feature = "hashes_backend", feature = "ring_backend"))]
-compile_error!("Feature `hashes_backend` and feature `ring_backend` cannot be enabled at the same time.");
+compile_error!(
+    "Feature `hashes_backend` and feature `ring_backend` cannot be enabled at the same time."
+);
 #[cfg(not(any(feature = "hashes_backend", feature = "ring_backend")))]
 compile_error!("You must enable at least one of the features: 'hashes_backend' or 'ring_backend'.");
 
-use std::fmt::Write;
 use crate::calculator::SupportedAlgorithm;
+use std::fmt::Write;
 
 // Bytes to Hex
 pub fn bytes_to_hex(bytes: &[u8]) -> String {
@@ -30,26 +32,34 @@ pub fn bytes_to_hex(bytes: &[u8]) -> String {
 
 // Detect hash algorithm
 #[cfg(feature = "hashes_backend")]
-pub fn detect_hash_algorithm<S: AsRef<str>>(hash: S)
-    -> Result<Vec<SupportedAlgorithm>, String> {
+pub fn detect_hash_algorithm<S: AsRef<str>>(hash: S) -> Result<Vec<SupportedAlgorithm>, String> {
     match hash.as_ref().len() {
-        40 => Ok(vec!(SupportedAlgorithm::SHA1)),
-        56 => Ok(vec!(SupportedAlgorithm::SHA224)),
-        64 => Ok(vec!(SupportedAlgorithm::SHA256, SupportedAlgorithm::SHA512_256)),
-        96 => Ok(vec!(SupportedAlgorithm::SHA384)),
-        128 => Ok(vec!(SupportedAlgorithm::SHA512)),
-        32 => Ok(vec!(SupportedAlgorithm::MD5, SupportedAlgorithm::MD4, SupportedAlgorithm::MD2)),
+        40 => Ok(vec![SupportedAlgorithm::SHA1]),
+        56 => Ok(vec![SupportedAlgorithm::SHA224]),
+        64 => Ok(vec![
+            SupportedAlgorithm::SHA256,
+            SupportedAlgorithm::SHA512_256,
+        ]),
+        96 => Ok(vec![SupportedAlgorithm::SHA384]),
+        128 => Ok(vec![SupportedAlgorithm::SHA512]),
+        32 => Ok(vec![
+            SupportedAlgorithm::MD5,
+            SupportedAlgorithm::MD4,
+            SupportedAlgorithm::MD2,
+        ]),
         _ => Err(String::from("Error: Invalid hash.")),
     }
 }
 
 #[cfg(feature = "ring_backend")]
-pub fn detect_hash_algorithm<S: AsRef<str>>(hash: S)
-    -> Result<Vec<SupportedAlgorithm>, String> {
+pub fn detect_hash_algorithm<S: AsRef<str>>(hash: S) -> Result<Vec<SupportedAlgorithm>, String> {
     match hash.as_ref().len() {
-        64 => Ok(vec!(SupportedAlgorithm::SHA256, SupportedAlgorithm::SHA512_256)),
-        96 => Ok(vec!(SupportedAlgorithm::SHA384)),
-        128 => Ok(vec!(SupportedAlgorithm::SHA512)),
+        64 => Ok(vec![
+            SupportedAlgorithm::SHA256,
+            SupportedAlgorithm::SHA512_256,
+        ]),
+        96 => Ok(vec![SupportedAlgorithm::SHA384]),
+        128 => Ok(vec![SupportedAlgorithm::SHA512]),
         _ => Err(String::from("Error: Invalid hash.")),
     }
 }
@@ -71,7 +81,10 @@ mod test_extra {
     #[test]
     fn test_detect_hash_algorithm() {
         assert_eq!(
-            detect_hash_algorithm("00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95").unwrap()[0],
+            detect_hash_algorithm(
+                "00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95"
+            )
+            .unwrap()[0],
             SupportedAlgorithm::SHA256
         )
     }
