@@ -7,7 +7,7 @@ repository = "https://github.com/Metaphorme/ezcheck"
 documentation = "https://docs.rs/ezcheck"
 readme = "README.md"
 authors = ["Heqi Liu 77@diazepam.cc"]
-license-file = "LICENSE"
+license = "MIT"
 
 # MSRV
 rust-version = "1.71.0"
