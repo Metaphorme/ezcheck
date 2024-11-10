@@ -48,9 +48,9 @@ enum Args {
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
-        /// File to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
-        #[arg(short, long)]
-        file: Option<String>,
+        /// File(s) to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
+        #[arg(short, long, num_args = 1..)]
+        file: Option<Vec<String>>,
 
         /// Direct text input for hash calculation.
         #[arg(short, long)]
@@ -124,9 +124,9 @@ enum Args {
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
-        /// File to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
-        #[arg(short, long)]
-        file: Option<String>,
+        /// File(s) to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
+        #[arg(short, long, num_args = 1..)]
+        file: Option<Vec<String>>,
 
         /// Direct text input for hash calculation.
         #[arg(short, long)]
@@ -213,15 +213,16 @@ fn main() {
             };
 
             if file.is_some() {  // File mode
-                let path = file.unwrap();
-                let task = Calculate::new(
-                    Data::ReadFile(String::from(&path)),
-                    algorithm,
-                );
-                let result = task.compute();
-                match result {
-                    Ok(result) => println!("{}  {}", result, &path),
-                    Err(e) => eprintln!("{}", e),
+                for f in file.unwrap() {
+                    let task = Calculate::new(
+                        Data::ReadFile(String::from(&f)),
+                        algorithm,
+                    );
+                    let result = task.compute();
+                    match result {
+                        Ok(result) => println!("{}  {}", result, &f),
+                        Err(e) => eprintln!("{}", e),
+                    }
                 }
             } else {  // Text mode
                 let text = text.unwrap();

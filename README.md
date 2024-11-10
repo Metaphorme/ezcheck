@@ -65,7 +65,7 @@ Calculate hash for a file or text.
 
 ```bash
 Usage:
-    ezcheck calculate [ALGORITHM (Default SHA256)] (-f file/"-" for standard input | -t text)
+    ezcheck calculate [ALGORITHM (Default SHA256)] (-f file(s)/"-" for standard input | -t text)
 
 Examples:
 $ ezcheck calculate sha256 -f image.jpg
