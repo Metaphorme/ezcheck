@@ -10,7 +10,7 @@ ezcheck have two backends: [ring](https://docs.rs/ring) and [hashes](https://doc
 
 | Features             | ring                                                       | hashes                                                          |
 |----------------------|------------------------------------------------------------|-----------------------------------------------------------------|
-| Speed                | Fast                                                       | About 10 times slower than ring.                                |
+| Speed                | Fast                                                       | About 5 times slower than ring.                                 |
 | Supported algorithms | SHA256, SHA384, SHA512, SHA512/256                         | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 |
 | Implement languages  | Assembly, Rust, C and etc..                                | Rust                                                            |
 | Compatibility        | May not work on every machine with different architecture. | Works well with Rust.                                           |
@@ -184,7 +184,7 @@ image.jpg: SHA256 OK
 
 * Steps:
 
-1. Run 3 times:
+1. Run and repeat 3 times:
     ```bash
     $ count = 10000  # Test size = 1MiB * $count
     $ # Bare
@@ -201,12 +201,12 @@ image.jpg: SHA256 OK
 
 ### Result
 
-| Command/Speed(GiB/s)/Test size(M) | 1    | 100  | 500  | 1000 | 5000 | 10000 |
-|-----------------------------------|------|------|------|------|------|-------|
-| Bare                              | 2.13 | 3.02 | 4.59 | 5.31 | 5.97 | 6.07  |
-| ezcheck-hashes                    | 0.13 | 0.28 | 0.29 | 0.30 | 0.30 | 0.30  |
-| ezcheck-ring                      | 0.58 | 1.24 | 1.57 | 1.63 | 1.68 | 1.68  |
-| sha256sum                         | 0.73 | 1.26 | 1.63 | 1.69 | 1.75 | 1.81  |
+| Command/Speed(GiB/s)/Test size(MiB) | 1    | 100  | 500  | 1000 | 5000 | 10000 |
+|-------------------------------------|------|------|------|------|------|-------|
+| Bare                                | 2.13 | 3.02 | 4.59 | 5.31 | 5.97 | 6.07  |
+| ezcheck-hashes                      | 0.13 | 0.28 | 0.29 | 0.30 | 0.30 | 0.30  |
+| ezcheck-ring                        | 0.58 | 1.24 | 1.57 | 1.63 | 1.68 | 1.68  |
+| sha256sum                           | 0.73 | 1.26 | 1.63 | 1.69 | 1.75 | 1.81  |
 
 ![benchmark](benchmark.png)
 
