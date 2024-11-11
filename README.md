@@ -19,7 +19,7 @@ ezcheck have two backends: [ring](https://docs.rs/ring) and [hashes](https://doc
 
 ### Install from binary
 
-Download suitable binary from [Releases](https://github.com/Metaphorme/ezcheck/releases).
+Download suitable binary from [Release](https://github.com/Metaphorme/ezcheck/releases/latest).
 
 ### Install from Cargo
 
@@ -182,7 +182,7 @@ image.jpg: SHA256 OK
 
 1. Run 3 times:
     ```bash
-    $ count = 10000  # Test size = 1M * $count
+    $ count = 10000  # Test size = 1MiB * $count
     $ # Bare
     $ dd if=/dev/zero bs=1M count=$count | pv > /dev/null
     $ # ezcheck-hashes
