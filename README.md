@@ -1,5 +1,9 @@
 # ezcheck
 
+[![Build](https://github.com/Metaphorme/ezcheck/actions/workflows/build.yml/badge.svg)](https://github.com/Metaphorme/ezcheck/actions/workflows/build.yml)
+[![Test](https://github.com/Metaphorme/ezcheck/actions/workflows/test.yml/badge.svg)](https://github.com/Metaphorme/ezcheck/actions/workflows/test.yml)
+[![Crates.io Version](https://img.shields.io/crates/v/ezcheck)](https://crates.io/crates/ezcheck)
+
 ezcheck(easy check) is an ergonomic, standard-output command-line tool for calculating, comparing, and verifying the hash of strings and files.
 
 ezcheck have two backends: [ring](https://docs.rs/ring) and [hashes](https://docs.rs/hashes), and you can only choose one of them. The main differences between them are:
