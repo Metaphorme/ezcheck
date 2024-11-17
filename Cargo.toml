@@ -1,6 +1,6 @@
 [package]
 name = "ezcheck"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 description = "An easy tool to calculate and check hash."
 repository = "https://github.com/Metaphorme/ezcheck"
@@ -19,10 +19,11 @@ md-5 = { version = "0.10", optional = true }
 sha1 = { version = "0.10", optional = true }
 sha2 = { version = "0.10", optional = true }
 digest = { version = "0.10", optional = true }
-ring = { version = "0.17" , optional = true }
-clap = { version = "4.5", features = ["derive"]}
+ring = { version = "0.17", optional = true }
+clap = { version = "4.5", features = ["derive"] }
 
 [features]
-default = ["hashes_backend"]
+default = ["mix_backend"]
 hashes_backend = ["md2", "md4", "md-5", "sha1", "sha2", "digest"]
 ring_backend = ["ring"]
+mix_backend = ["md2", "md4", "md-5", "sha1", "sha2", "digest", "ring"]

@@ -4,20 +4,25 @@
 [![Test](https://github.com/Metaphorme/ezcheck/actions/workflows/test.yml/badge.svg)](https://github.com/Metaphorme/ezcheck/actions/workflows/test.yml)
 [![Crates.io Version](https://img.shields.io/crates/v/ezcheck)](https://crates.io/crates/ezcheck)
 
-ezcheck(easy check) is an ergonomic, standard-output command-line tool for calculating, comparing, and verifying the hash of strings and files.
+ezcheck(easy check) is an ergonomic, standard-output command-line tool for calculating, comparing, and verifying the
+hash of strings and files.
 
-ezcheck have two backends: [ring](https://docs.rs/ring) and [hashes](https://docs.rs/hashes), and you can only choose one of them. The main differences between them are:
+ezcheck have two backends: [ring](https://docs.rs/ring), [hashes](https://docs.rs/hashes) and mix
+backend([ring](https://docs.rs/ring) and [hashes](https://docs.rs/hashes)), and you can only choose
+one of them. The main differences between them are:
 
-| Features             | ring                                                       | hashes                                                          |
-|----------------------|------------------------------------------------------------|-----------------------------------------------------------------|
-| Speed                | Fast                                                       | About 5 times slower than ring.                                 |
-| Supported algorithms | SHA256, SHA384, SHA512, SHA512/256                         | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 |
-| Implement languages  | Assembly, Rust, C and etc..                                | Rust                                                            |
-| Compatibility        | May not work on every machine with different architecture. | Works well with Rust.                                           |
+| Features             | ring                                                       | hashes                                                          | mix                                                             |
+|----------------------|------------------------------------------------------------|-----------------------------------------------------------------|-----------------------------------------------------------------|
+| Speed                | Fast                                                       | About 5 times slower than ring.                                 | Use the fastest backend that supports the algorithm.            | 
+| Supported algorithms | SHA256, SHA384, SHA512, SHA512/256                         | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 |
+| Implement languages  | Assembly, Rust, C and etc..                                | Rust                                                            | Assembly, Rust, C and etc..                                     |
+| Compatibility        | May not work on every machine with different architecture. | Works well with Rust.                                           | Same to ring.                                                   |
 
-❗️ To achieve maximum compatibility, the default backend is **hashes backend**.
+❗️ To achieve both fastest speed and maximum compatibility, the default backend is **mix backend**.
 
-⚠️ Please notice that although ezcheck(hashes backend) supports a lot of hash algorithms, `MD2`, `MD4`, `MD5`, `SHA1` are proven to be **insecure**. ezcheck still provides them for maximum compatibility, but **it does not recommend users continue to use them**. 
+⚠️ Please notice that although ezcheck supports a lot of hash algorithms, `MD2`, `MD4`, `MD5`, `SHA1` are proven to be
+**insecure**. ezcheck still provides them for maximum compatibility, but **it does not recommend users continue to use
+them**.
 
 ## Setup
 
@@ -28,28 +33,31 @@ Download suitable binary from [Release](https://github.com/Metaphorme/ezcheck/re
 ### Install from Cargo
 
 ```bash
-$ # hashes backend
+$ # mix backend
 $ cargo install ezcheck
 $ # ring backend
 $ cargo install ezcheck --no-default-features --features ring_backend
+$ # hashes backend
+$ cargo install ezcheck --no-default-features --features hashes_backend
 ```
-
 
 ### Build from source
 
 #### Requirements
 
-* [Rust 1.71.0+](https://www.rust-lang.org/)
+* [Rust 1.71.0+](https://github.com/Metaphorme/ezcheck/blob/master/Cargo.toml#L13)
 
 #### Build
 
 ```bash
 $ git clone https://github.com/Metaphorme/ezcheck && cd ezcheck
-$ # Choose one from hashes backend or ring backend
-$ # hashes backend
-$ cargo build --release --features hashes_backend
+$ # Choose one from mix backend, hashes backend or ring backend
+$ # mix backend
+$ cargo build --release
 $ # ring backend
 $ cargo build --release --no-default-features --features ring_backend
+$ # hashes backend
+$ cargo build --release --no-default-features --features hashes_backend
 $
 $ ./target/release/ezcheck --version
 ```
@@ -58,26 +66,26 @@ $ ./target/release/ezcheck --version
 
 ```bash
 $ git clone https://github.com/Metaphorme/ezcheck && cd ezcheck
-$ cargo test --features hashes_backend  # hashes backend
-$ cargo test --no-default-features  --features ring_backend  # ring backend
+$ cargo test  # mix backend
+$ cargo test --no-default-features --features ring_backend    # ring backend
+$ cargo test --no-default-features --features hashes_backend  # hashes backend
 ```
 
 ## Usage
 
 Supported hash algorithms of different backends:
 
-| ring       | hashes     |
-|------------|------------|
-|            | MD2        |
-|            | MD4        |
-|            | MD5        |
-|            | SHA1       |
-|            | SHA224     |
-| SHA256     | SHA256     |
-| SHA384     | SHA384     |
-| SHA512     | SHA512     |
-| SHA512     | SHA512     |
-| SHA512/256 | SHA512/256 |
+| ring       | hashes     | mix                       |
+|------------|------------|---------------------------|
+|            | MD2        | MD2 (hashes backend)      |
+|            | MD4        | MD4 (hashes backend)      |
+|            | MD5        | MD5 (hashes backend)      |
+|            | SHA1       | SHA1 (hashes backend)     |
+|            | SHA224     | SHA224 (hashes backend)   |
+| SHA256     | SHA256     | SHA256 (ring backend)     |
+| SHA384     | SHA384     | SHA384 (ring backend)     |
+| SHA512     | SHA512     | SHA512 (ring backend)     |
+| SHA512/256 | SHA512/256 | SHA512/256 (ring backend) |
 
 ### Calculate
 
@@ -186,7 +194,7 @@ image.jpg: SHA256 OK
 
 1. Run and repeat 3 times:
     ```bash
-    $ count = 10000  # Test size = 1MiB * $count
+    $ count=10000  # Test size = 1MiB * $count
     $ # Bare
     $ dd if=/dev/zero bs=1M count=$count | pv > /dev/null
     $ # ezcheck-hashes

@@ -1,9 +1,22 @@
-#[cfg(all(feature = "hashes_backend", feature = "ring_backend"))]
+#[cfg(not(any(
+    feature = "hashes_backend",
+    feature = "ring_backend",
+    feature = "mix_backend"
+)))]
+compile_error!("You must enable at least one of the features: 'hashes_backend', 'ring_backend' or 'mix_backend'.");
+#[cfg(any(
+    all(feature = "hashes_backend", feature = "ring_backend"),
+    all(feature = "hashes_backend", feature = "mix_backend"),
+    all(feature = "ring_backend", feature = "mix_backend"),
+    all(
+        feature = "hashes_backend",
+        feature = "ring_backend",
+        feature = "mix_backend"
+    )
+))]
 compile_error!(
-    "Feature `hashes_backend` and feature `ring_backend` cannot be enabled at the same time."
+    "Only one of the features `hashes_backend`, `ring_backend`, or `mix_backend` can be enabled at a time."
 );
-#[cfg(not(any(feature = "hashes_backend", feature = "ring_backend")))]
-compile_error!("You must enable at least one of the features: 'hashes_backend' or 'ring_backend'.");
 
 use crate::calculator::SupportedAlgorithm;
 use std::fmt::Write;
@@ -31,7 +44,7 @@ pub fn bytes_to_hex(bytes: &[u8]) -> String {
 // }
 
 // Detect hash algorithm
-#[cfg(feature = "hashes_backend")]
+#[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
 pub fn detect_hash_algorithm<S: AsRef<str>>(hash: S) -> Result<Vec<SupportedAlgorithm>, String> {
     match hash.as_ref().len() {
         40 => Ok(vec![SupportedAlgorithm::SHA1]),

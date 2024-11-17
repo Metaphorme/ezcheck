@@ -32,29 +32,32 @@ jobs:
     continue-on-error: true
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - if: matrix.config.target == 'i686-unknown-linux-gnu'
-      run: |
-        sudo apt update
-        sudo apt install -y gcc-i686-linux-gnu
+      - if: matrix.config.target == 'i686-unknown-linux-gnu'
+        run: |
+          sudo apt update
+          sudo apt install -y gcc-i686-linux-gnu
+          
+          echo "CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=i686-linux-gnu-gcc" >> $GITHUB_ENV
 
-        echo "CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=i686-linux-gnu-gcc" >> $GITHUB_ENV
+      - if: matrix.config.target == 'i686-pc-windows-gnu'
+        run: |
+          Invoke-WebRequest -Uri https://github.com/niXman/mingw-builds-binaries/releases/download/14.2.0-rt_v12-rev0/i686-14.2.0-release-posix-dwarf-msvcrt-rt_v12-rev0.7z -OutFile mingw32.7z
+          7z x mingw32.7z -oC:\mingw32
+          echo "C:\mingw32\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
 
-    - if: matrix.config.target == 'i686-pc-windows-gnu'
-      run: |
-        Invoke-WebRequest -Uri https://github.com/niXman/mingw-builds-binaries/releases/download/14.2.0-rt_v12-rev0/i686-14.2.0-release-posix-dwarf-msvcrt-rt_v12-rev0.7z -OutFile mingw32.7z
-        7z x mingw32.7z -oC:\mingw32
-        echo "C:\mingw32\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.config.target }}
 
-    - name: Setup Rust toolchain
-      uses: actions-rust-lang/setup-rust-toolchain@v1
-      with:
-        toolchain: stable
-        target: ${{ matrix.config.target }}
-    
-    - name: Test hashes backend
-      run: cargo test --features hashes_backend --target ${{ matrix.config.target }}
+      - name: Test ring backend
+        run: cargo test --no-default-features --features ring_backend --target ${{ matrix.config.target }}
 
-    - name: Test ring backend
-      run: cargo test --no-default-features  --features ring_backend --target ${{ matrix.config.target }}
+      - name: Test hashes backend
+        run: cargo test --no-default-features --features hashes_backend --target ${{ matrix.config.target }}
+
+      - name: Test mix backend
+        run: cargo test --target ${{ matrix.config.target }}

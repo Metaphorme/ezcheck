@@ -1,25 +1,38 @@
-#[cfg(all(feature = "hashes_backend", feature = "ring_backend"))]
+#[cfg(not(any(
+    feature = "hashes_backend",
+    feature = "ring_backend",
+    feature = "mix_backend"
+)))]
+compile_error!("You must enable at least one of the features: 'hashes_backend', 'ring_backend' or 'mix_backend'.");
+#[cfg(any(
+    all(feature = "hashes_backend", feature = "ring_backend"),
+    all(feature = "hashes_backend", feature = "mix_backend"),
+    all(feature = "ring_backend", feature = "mix_backend"),
+    all(
+        feature = "hashes_backend",
+        feature = "ring_backend",
+        feature = "mix_backend"
+    )
+))]
 compile_error!(
-    "Feature `hashes_backend` and feature `ring_backend` cannot be enabled at the same time."
+    "Only one of the features `hashes_backend`, `ring_backend`, or `mix_backend` can be enabled at a time."
 );
-#[cfg(not(any(feature = "hashes_backend", feature = "ring_backend")))]
-compile_error!("You must enable at least one of the features: 'hashes_backend' or 'ring_backend'.");
 
 use crate::extra::bytes_to_hex;
 use std::fmt;
 use std::io::{BufRead, Error};
 
-#[cfg(feature = "hashes_backend")]
+#[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
 use digest::DynDigest;
 
-#[cfg(feature = "ring_backend")]
+#[cfg(any(feature = "ring_backend", feature = "mix_backend"))]
 use ring::digest::{Context, SHA256, SHA384, SHA512, SHA512_256};
 
 // https://github.com/rust-lang/rust/issues/47133
 #[allow(dead_code)]
 pub const BUFFER_SIZE: usize = 8192;
 
-#[cfg(feature = "hashes_backend")]
+#[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SupportedAlgorithm {
     MD2,
@@ -33,7 +46,7 @@ pub enum SupportedAlgorithm {
     SHA512_256,
 }
 
-#[cfg(feature = "hashes_backend")]
+#[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
 impl fmt::Display for SupportedAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let algorithm = match self {
@@ -85,8 +98,6 @@ pub fn hash_calculator<R: BufRead>(
 
     Ok(bytes_to_hex(&*hasher.finalize_reset()))
 }
-
-// fn sent_data_to_digest<R: Read, U: Update>(mut reader: BufReader<R>, hasher: <U>) {}
 
 #[cfg(feature = "ring_backend")]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -140,6 +151,64 @@ pub fn hash_calculator<R: BufRead>(
     Ok(bytes_to_hex(&hasher.finish().as_ref().to_vec()))
 }
 
+#[cfg(feature = "mix_backend")]
+pub fn hash_calculator<R: BufRead>(
+    mut reader: R,
+    algorithm: SupportedAlgorithm,
+) -> Result<String, Error> {
+    let mut buffer = [0u8; BUFFER_SIZE];
+    if algorithm == SupportedAlgorithm::SHA256  // ring backend
+        || algorithm == SupportedAlgorithm::SHA384
+        || algorithm == SupportedAlgorithm::SHA512
+        || algorithm == SupportedAlgorithm::SHA512_256
+    {
+        let mut hasher: Context = match algorithm {
+            SupportedAlgorithm::SHA256 => Context::new(&SHA256),
+            SupportedAlgorithm::SHA384 => Context::new(&SHA384),
+            SupportedAlgorithm::SHA512 => Context::new(&SHA512),
+            SupportedAlgorithm::SHA512_256 => Context::new(&SHA512_256),
+            _ => Context::new(&SHA256), // Can't happen!
+        };
+        loop {
+            match reader.read(&mut buffer) {
+                Ok(read_bytes) => {
+                    if read_bytes == 0 {
+                        break; // Finish reading the file
+                    }
+                    hasher.update(&buffer[..read_bytes]);
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+        Ok(bytes_to_hex(&hasher.finish().as_ref().to_vec()))
+    } else {  // hashes backend
+        let mut hasher: Box<dyn DynDigest> = match algorithm {
+            SupportedAlgorithm::MD2 => Box::new(md2::Md2::default()),
+            SupportedAlgorithm::MD4 => Box::new(md4::Md4::default()),
+            SupportedAlgorithm::MD5 => Box::new(md5::Md5::default()),
+            SupportedAlgorithm::SHA1 => Box::new(sha1::Sha1::default()),
+            SupportedAlgorithm::SHA224 => Box::new(sha2::Sha224::default()),
+            _ => Box::new(md5::Md5::default()), // Can't happen!
+        };
+        loop {
+            match reader.read(&mut buffer) {
+                Ok(read_bytes) => {
+                    if read_bytes == 0 {
+                        break; // Finish reading the file
+                    }
+                    hasher.update(&buffer[..read_bytes]);
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+        Ok(bytes_to_hex(&*hasher.finalize_reset()))
+    }
+}
+
 #[cfg(test)]
 mod test_calculator {
     use super::*;
@@ -148,7 +217,7 @@ mod test_calculator {
 
     const TEST_WORD: &[u8; 16] = b"Veni, vidi, vici";
 
-    #[cfg(feature = "hashes_backend")]
+    #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
     #[test]
     fn test_md2() {
         let reader = BufReader::new(&TEST_WORD[..]);
@@ -158,7 +227,7 @@ mod test_calculator {
         );
     }
 
-    #[cfg(feature = "hashes_backend")]
+    #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
     #[test]
     fn test_md4() {
         let reader = BufReader::new(&TEST_WORD[..]);
@@ -168,7 +237,7 @@ mod test_calculator {
         );
     }
 
-    #[cfg(feature = "hashes_backend")]
+    #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
     #[test]
     fn test_md5() {
         let reader = BufReader::new(&TEST_WORD[..]);
@@ -178,7 +247,7 @@ mod test_calculator {
         );
     }
 
-    #[cfg(feature = "hashes_backend")]
+    #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
     #[test]
     fn test_sha1() {
         let reader = BufReader::new(&TEST_WORD[..]);
@@ -188,7 +257,7 @@ mod test_calculator {
         );
     }
 
-    #[cfg(feature = "hashes_backend")]
+    #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
     #[test]
     fn test_sha224() {
         let reader = BufReader::new(&TEST_WORD[..]);

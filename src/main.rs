@@ -1,9 +1,22 @@
-#[cfg(all(feature = "hashes_backend", feature = "ring_backend"))]
+#[cfg(not(any(
+    feature = "hashes_backend",
+    feature = "ring_backend",
+    feature = "mix_backend"
+)))]
+compile_error!("You must enable at least one of the features: 'hashes_backend', 'ring_backend' or 'mix_backend'.");
+#[cfg(any(
+    all(feature = "hashes_backend", feature = "ring_backend"),
+    all(feature = "hashes_backend", feature = "mix_backend"),
+    all(feature = "ring_backend", feature = "mix_backend"),
+    all(
+        feature = "hashes_backend",
+        feature = "ring_backend",
+        feature = "mix_backend"
+    )
+))]
 compile_error!(
-    "Feature `hashes_backend` and feature `ring_backend` cannot be enabled at the same time."
+    "Only one of the features `hashes_backend`, `ring_backend`, or `mix_backend` can be enabled at a time."
 );
-#[cfg(not(any(feature = "hashes_backend", feature = "ring_backend")))]
-compile_error!("You must enable at least one of the features: 'hashes_backend' or 'ring_backend'.");
 
 use clap::{Parser, Subcommand};
 use ezcheck::calculator::SupportedAlgorithm;
@@ -14,7 +27,7 @@ use std::process;
 #[cfg(feature = "hashes_backend")]
 #[derive(Parser)]
 #[command(name = "ezcheck")]
-#[command(version = "0.1.1 (Hashes Backend)")]
+#[command(version = "0.1.3 (Hashes Backend)")]
 #[command(
     about = "An easy tool to calculate and check hash.\nMade with love by Heqi Liu, https://github.com/metaphorme"
 )]
@@ -26,7 +39,7 @@ struct Cli {
 #[cfg(feature = "ring_backend")]
 #[derive(Parser)]
 #[command(name = "ezcheck")]
-#[command(version = "0.1.1 (Ring Backend)")]
+#[command(version = "0.1.3 (Ring Backend)")]
 #[command(
     about = "An easy tool to calculate and check hash.\nMade with love by Heqi Liu, https://github.com/metaphorme"
 )]
@@ -35,7 +48,19 @@ struct Cli {
     args: Args,
 }
 
-#[cfg(feature = "hashes_backend")]
+#[cfg(feature = "mix_backend")]
+#[derive(Parser)]
+#[command(name = "ezcheck")]
+#[command(version = "0.1.3 (Mix Backend)")]
+#[command(
+    about = "An easy tool to calculate and check hash.\nMade with love by Heqi Liu, https://github.com/metaphorme"
+)]
+struct Cli {
+    #[command(subcommand)]
+    args: Args,
+}
+
+#[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
 #[derive(Subcommand)]
 enum Args {
     /// Calculate hash for a file or text.
