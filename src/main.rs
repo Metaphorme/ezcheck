@@ -63,7 +63,8 @@ struct Cli {
 #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
 #[derive(Subcommand)]
 enum Args {
-    /// Calculate hash for a file or text.
+    /// Calculate hash for a file or text (alias: c)
+    #[command(alias = "c")]
     Calculate {
         /// Optional algorithm to use for calculate hash.
         /// Supported algorithms:
@@ -88,7 +89,8 @@ enum Args {
         text: Option<String>,
     },
 
-    /// Compare with given hash.
+    /// Compare with given hash (alias: m)
+    #[command(alias = "m")]
     Compare {
         /// Optional algorithm to use for calculate hash.
         /// Leave blank to automatically detect the hash algorithm.
@@ -118,7 +120,8 @@ enum Args {
         check_hash: Option<String>,
     },
 
-    /// Check with given shasum file.
+    /// Check with given shasum file (alias: k)
+    #[command(alias = "k")]
     Check {
         /// Optional algorithm to use for calculate hash.
         /// Leave blank to automatically detect the hash algorithm.
@@ -144,7 +147,8 @@ enum Args {
 #[cfg(feature = "ring_backend")]
 #[derive(Subcommand)]
 enum Args {
-    /// Calculate hash for a file or text.
+    /// Calculate hash for a file or text (alias: c)
+    #[command(alias = "c")]
     Calculate {
         /// Optional algorithm to use for calculate hash
         /// Supported algorithms:
@@ -164,7 +168,8 @@ enum Args {
         text: Option<String>,
     },
 
-    /// Compare with given hash.
+    /// Compare with given hash (alias: m)
+    #[command(alias = "m")]
     Compare {
         /// Optional algorithm to use for calculate hash.
         /// Leave blank to automatically detect the hash algorithm.
@@ -189,7 +194,8 @@ enum Args {
         check_hash: Option<String>,
     },
 
-    /// Check with given shasum file.
+    /// Check with given shasum file (alias: k)
+    #[command(alias = "k")]
     Check {
         /// Optional algorithm to use for calculate hash.
         /// Leave blank to automatically detect the hash algorithm.

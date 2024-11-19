@@ -93,10 +93,10 @@ Calculate hash for a file or text.
 
 ```bash
 $ # Usage:
-$ #  ezcheck calculate [ALGORITHM (Default SHA256)] (-f file(s)/"-" for standard input | -t text)
+$ #  ezcheck calculate|c [ALGORITHM (Default SHA256)] (-f file(s)/"-" for standard input | -t text)
 $
 $ # Examples:
-$ ezcheck calculate sha256 -f image.jpg
+$ ezcheck c sha256 -f image.jpg
 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f  image.jpg
 $
 $ cat image.jpg | ezcheck calculate sha256 -f -
@@ -119,10 +119,10 @@ Compare with given hash.
 
 ```bash
 $ # Usage:
-$ #  ezcheck compare [ALGORITHM (Leave blank to automatically detect algorithm)] (-f file/"-" for standard input | -t text) -c hash
+$ #  ezcheck compare|m [ALGORITHM (Leave blank to automatically detect algorithm)] (-f file/"-" for standard input | -t text) -c hash
 $  
 $ # Examples:
-$ ezcheck compare sha256 -f image.jpg -c 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f
+$ ezcheck m sha256 -f image.jpg -c 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f
 SHA256 OK
 $
 $ cat image.jpg | ezcheck compare sha256 -f - -c 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f                           
@@ -151,11 +151,11 @@ shasum file could be generated from [shasum](https://linux.die.net/man/1/shasum)
 
 ```bash
 $ # Usage:
-$ #  ezcheck check [ALGORITHM (Leave blank to automatically detect algorithm)] -c check-file
+$ #  ezcheck check|k [ALGORITHM (Leave blank to automatically detect algorithm)] -c check-file
 $
 $ # Warning: The shasum file (or check file) should be in the same directory with files to be checked.
 $ # Example:
-$ ezcheck check sha256 -c sha256sum.txt 
+$ ezcheck k sha256 -c sha256sum.txt 
 滕王阁序.txt: SHA256 OK
 image.jpg: SHA256 OK
 $
