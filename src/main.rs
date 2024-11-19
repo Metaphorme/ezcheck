@@ -27,7 +27,7 @@ use std::process;
 #[cfg(feature = "hashes_backend")]
 #[derive(Parser)]
 #[command(name = "ezcheck")]
-#[command(version = "0.1.3 (Hashes Backend)")]
+#[command(version = concat!(env!("CARGO_PKG_VERSION"), " (Hashes Backend)"))]
 #[command(
     about = "An easy tool to calculate and check hash.\nMade with love by Heqi Liu, https://github.com/metaphorme"
 )]
@@ -39,7 +39,7 @@ struct Cli {
 #[cfg(feature = "ring_backend")]
 #[derive(Parser)]
 #[command(name = "ezcheck")]
-#[command(version = "0.1.3 (Ring Backend)")]
+#[command(version = concat!(env!("CARGO_PKG_VERSION"), " (Ring Backend)"))]
 #[command(
     about = "An easy tool to calculate and check hash.\nMade with love by Heqi Liu, https://github.com/metaphorme"
 )]
@@ -51,7 +51,7 @@ struct Cli {
 #[cfg(feature = "mix_backend")]
 #[derive(Parser)]
 #[command(name = "ezcheck")]
-#[command(version = "0.1.3 (Mix Backend)")]
+#[command(version = concat!(env!("CARGO_PKG_VERSION"), " (Mix Backend)"))]
 #[command(
     about = "An easy tool to calculate and check hash.\nMade with love by Heqi Liu, https://github.com/metaphorme"
 )]
