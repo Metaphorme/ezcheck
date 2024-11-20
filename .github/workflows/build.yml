@@ -38,15 +38,8 @@ jobs:
       - if: matrix.config.os == 'macos-latest'
         run: brew install coreutils
 
-      - if: matrix.config.target == 'i686-unknown-linux-gnu' || matrix.config.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt update
-          sudo apt install -y gcc-i686-linux-gnu gcc-aarch64-linux-gnu
-          
-          echo "CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=i686-linux-gnu-gcc" >> $GITHUB_ENV
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-
-      - if: matrix.config.target == 'i686-pc-windows-gnu'
+      - name: Install mingw32
+        if: matrix.config.target == 'i686-pc-windows-gnu'
         run: |
           Invoke-WebRequest -Uri https://github.com/niXman/mingw-builds-binaries/releases/download/14.2.0-rt_v12-rev0/i686-14.2.0-release-posix-dwarf-msvcrt-rt_v12-rev0.7z -OutFile mingw32.7z
           7z x mingw32.7z -oC:\mingw32
@@ -58,7 +51,16 @@ jobs:
           toolchain: stable
           target: ${{ matrix.config.target }}
 
+      - name: Install cross
+        if: matrix.config.os == 'ubuntu-latest'
+        run: cargo install cross --git https://github.com/cross-rs/cross
+        
       - name: Build
+        if: matrix.config.os == 'ubuntu-latest'
+        run: cross build --release --no-default-features --features ${{ matrix.backend }} --target ${{ matrix.config.target }}
+
+      - name: Build
+        if: matrix.config.os != 'ubuntu-latest'
         run: cargo build --release --no-default-features --features ${{ matrix.backend }} --target ${{ matrix.config.target }}
 
       - if: matrix.config.os == 'windows-latest'
