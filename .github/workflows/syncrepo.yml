@@ -1,0 +1,17 @@
+name: SyncToGitee
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  repo-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Yikun/hub-mirror-action@master
+        with:
+          src: github/Metaphorme
+          dst: gitee/metaphorme
+          dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
+          dst_token: ${{ secrets.GITEE_TOKEN }}
+          static_list: "ezcheck"
