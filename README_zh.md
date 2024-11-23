@@ -41,8 +41,8 @@ $ cargo install ezcheck --no-default-features --features hashes_backend
 
 ### 使用 x-cmd 即刻运行 ezcheck
 
-[x-cmd](https://x-cmd.com) 是一个在 POSIX Shell 实现的轻量级、跨平台包管理工具。仅需[
-`x ezcheck`](https://x-cmd.com/pkg/ezcheck)命令即可快速下载并运行 ezcheck。
+[x-cmd](https://x-cmd.com) 是一个在 POSIX Shell 实现的轻量级、跨平台包管理工具。
+仅需运行[`x ezcheck`](https://x-cmd.com/pkg/ezcheck)即可快速下载并运行 ezcheck。
 
 您还可以在用户级别安装 ezcheck，而无需使用 root 权限：
 
