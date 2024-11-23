@@ -2,7 +2,8 @@
 
 [![Build](https://github.com/Metaphorme/ezcheck/actions/workflows/build.yml/badge.svg)](https://github.com/Metaphorme/ezcheck/actions/workflows/build.yml)
 [![Test](https://github.com/Metaphorme/ezcheck/actions/workflows/test.yml/badge.svg)](https://github.com/Metaphorme/ezcheck/actions/workflows/test.yml)
-[![Crates.io Version](https://img.shields.io/crates/v/ezcheck)](https://crates.io/crates/ezcheck)
+[![Crates.io Version](https://img.shields.io/crates/v/ezcheck?logo=rust)](https://crates.io/crates/ezcheck)
+[![Mirror Gitee](https://img.shields.io/badge/Mirror-Gitee-blue?logo=gitee)](https://gitee.com/metaphorme/ezcheck)
 
 ezcheck(easy check) is an ergonomic, standard-output command-line tool for calculating, comparing, and verifying the
 hash of strings and files.
