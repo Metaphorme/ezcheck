@@ -30,23 +30,6 @@ them**.
 
 Download suitable binary from [release](https://github.com/Metaphorme/ezcheck/releases/latest).
 
-### Run Instantly with [x-cmd](https://x-cmd.com/pkg/ezcheck)
-    
-[x-cmd](https://x-cmd.com) is a lightweight package manager for POSIX shells, built using shell and awk.  It allows you to run `ezcheck` directly without manual installation:
-
-```bash
-x ezcheck
-```
-
-x-cmd downloads and executes the binary automatically.
-
-Also, you can also install `ezcheck` in the user level without requiring root privileges
-
-```bash
-x env use ezcheck      # Install in the current user space
-```
-
-This installs `ezcheck` to your user space. Afterward, you can use `ezcheck` directly in any shell with x-cmd activated.
 
 ### Install from Cargo
 
@@ -59,7 +42,11 @@ $ # hashes backend
 $ cargo install ezcheck --no-default-features --features hashes_backend
 ```
 
-### Install from [X-CMD](https://x-cmd.com/)
+### Instantly run `ezcheck` with x-cmd
+
+[x-cmd](https://x-cmd.com) is a lightweight cross-platform package manager implemented in posix shell. Quickly download and execute `ezcheck` with a single command: [`x ezcheck`](https://x-cmd.com/pkg/ezcheck)
+
+You can also install `ezcheck` in the user level without requiring root privileges.
 
 ```bash
 $ x env use ezcheck
