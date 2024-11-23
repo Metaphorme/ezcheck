@@ -2,11 +2,9 @@ name: Test
 
 on:
   push:
-    branches: [ "master" ]
-    paths-ignore: [ "README.md", "LICENSE" ]
+    paths-ignore: [ "README.md", "README_zh.md", "LICENSE" ]
   pull_request:
-    branches: [ "master" ]
-    paths-ignore: [ "README.md", "LICENSE" ]
+    paths-ignore: [ "README.md", "README_zh.md", "LICENSE" ]
   workflow_dispatch:
 
 env:
