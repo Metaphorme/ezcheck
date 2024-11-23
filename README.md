@@ -41,11 +41,17 @@ $ # hashes backend
 $ cargo install ezcheck --no-default-features --features hashes_backend
 ```
 
+### Install from [X-CMD](https://x-cmd.com/)
+
+```bash
+$ x env use ezcheck
+```
+
 ### Build from source
 
 #### Requirements
 
-* [Rust 1.71.0+](https://github.com/Metaphorme/ezcheck/blob/master/Cargo.toml#L13)
+* [Rust 1.71.0+](./Cargo.toml#L13)
 
 #### Build
 
