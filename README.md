@@ -44,7 +44,12 @@ $ # hashes backend
 $ cargo install ezcheck --no-default-features --features hashes_backend
 ```
 
-### Install from [X-CMD](https://x-cmd.com/)
+### Instantly run `ezcheck` with x-cmd
+
+[x-cmd](https://x-cmd.com) is a lightweight cross-platform package manager implemented in posix shell. Quickly download
+and execute `ezcheck` with a single command: [`x ezcheck`](https://x-cmd.com/pkg/ezcheck)
+
+You can also install `ezcheck` in the user level without requiring root privileges:
 
 ```bash
 $ x env use ezcheck
