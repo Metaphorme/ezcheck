@@ -5,35 +5,30 @@
 [![Crates.io Version](https://img.shields.io/crates/v/ezcheck?logo=rust)](https://crates.io/crates/ezcheck)
 [![Mirror Gitee](https://img.shields.io/badge/Mirror-Gitee-blue?logo=gitee)](https://gitee.com/metaphorme/ezcheck)
 
-[中文文档](./README_zh.md)
+ezcheck（或 easy check）是一个符合人体工程学、输出标准的命令行工具，用于计算、对比和验证字符串或文件的哈希值。
 
-ezcheck(easy check) is an ergonomic, standard-output command-line tool for calculating, comparing, and verifying the
-hash of strings and files.
+ezcheck 有三个后端：[ring](https://docs.rs/ring)，[hashes](https://docs.rs/hashes)
+和混合后端（mix backend，同时使用[ring](https://docs.rs/ring)，[hashes](https://docs.rs/hashes)），并且您只能选择其中一个。这些后端的主要差异在于：
 
-ezcheck have three backends: [ring](https://docs.rs/ring), [hashes](https://docs.rs/hashes) and mix
-backend([ring](https://docs.rs/ring) and [hashes](https://docs.rs/hashes)), and you can only choose
-one of them. The main differences between them are:
+| 特点    | ring                               | hashes                                                          | 混合后端（mix）                                                       |
+|-------|------------------------------------|-----------------------------------------------------------------|-----------------------------------------------------------------|
+| 速度    | 非常快。                               | 大约比 ring 慢五倍。                                                   | 使用支持此算法的最快后端。                                                   | 
+| 支持的算法 | SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 |
+| 实现语言  | Assembly, Rust, C 等。               | Rust                                                            | Assembly, Rust, C 等。                                            |
+| 兼容性   | 可能无法在一些系统和架构上工作。                   | 和 Rust 兼容性一致。                                                   | 与 ring 相同。                                                      |
 
-| Features             | ring                                                       | hashes                                                          | mix                                                             |
-|----------------------|------------------------------------------------------------|-----------------------------------------------------------------|-----------------------------------------------------------------|
-| Speed                | Fast.                                                      | About 5 times slower than ring.                                 | Use the fastest backend that supports the algorithm.            | 
-| Supported algorithms | SHA256, SHA384, SHA512, SHA512/256                         | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 |
-| Implement languages  | Assembly, Rust, C and etc..                                | Rust                                                            | Assembly, Rust, C and etc..                                     |
-| Compatibility        | May not work on every machine with different architecture. | Works well with Rust.                                           | Same to ring.                                                   |
+❗️ 为了兼顾最快的速度和最大的算法兼容性，默认后端是混合后端（mix backend）。
 
-❗️ To achieve both fastest speed and maximum compatibility, the default backend is **mix backend**.
+⚠️ 请注意，虽然 ezcheck 支持很多哈希算法，但是`MD2`，`MD4`，`MD5`，`SHA1`已被证明**不安全**。ezcheck
+仍然提供它们以实现最大的算法兼容性，但并不建议用户继续使用它们。
 
-⚠️ Please notice that although ezcheck supports a lot of hash algorithms, `MD2`, `MD4`, `MD5`, `SHA1` are proven to be
-**insecure**. ezcheck still provides them for maximum compatibility, but **it does not recommend users continue to use
-them**.
+## 安装方法
 
-## Setup
+### 从二进制文件安装
 
-### Install from binary
+从 [release](https://github.com/Metaphorme/ezcheck/releases/latest) 下载适合的二进制版本。
 
-Download suitable binary from [release](https://github.com/Metaphorme/ezcheck/releases/latest).
-
-### Install from Cargo
+### 从 Cargo 安装
 
 ```bash
 $ # mix backend
@@ -44,23 +39,23 @@ $ # hashes backend
 $ cargo install ezcheck --no-default-features --features hashes_backend
 ```
 
-### Install from [X-CMD](https://x-cmd.com/)
+### 从 [X-CMD](https://x-cmd.com/) 安装
 
 ```bash
 $ x env use ezcheck
 ```
 
-### Build from source
+### 从源码编译
 
-#### Requirements
+#### 编译要求
 
 * [Rust 1.71.0+](./Cargo.toml#L13)
 
-#### Build
+#### 构建
 
 ```bash
 $ git clone https://github.com/Metaphorme/ezcheck && cd ezcheck
-$ # Choose one from mix backend, hashes backend or ring backend
+$ # 可从 mix backend、hashes backend、ring backend 中任选其一
 $ # mix backend
 $ cargo build --release
 $ # ring backend
@@ -71,7 +66,7 @@ $
 $ ./target/release/ezcheck --version
 ```
 
-## Run tests
+## 运行测试
 
 ```bash
 $ git clone https://github.com/Metaphorme/ezcheck && cd ezcheck
@@ -80,31 +75,31 @@ $ cargo test --no-default-features --features ring_backend    # ring backend
 $ cargo test --no-default-features --features hashes_backend  # hashes backend
 ```
 
-## Usage
+## 用法
 
-Supported hash algorithms of different backends:
+不同后端支持的哈希算法：
 
-| ring       | hashes     | mix                       |
-|------------|------------|---------------------------|
-|            | MD2        | MD2 (hashes backend)      |
-|            | MD4        | MD4 (hashes backend)      |
-|            | MD5        | MD5 (hashes backend)      |
-|            | SHA1       | SHA1 (hashes backend)     |
-|            | SHA224     | SHA224 (hashes backend)   |
-| SHA256     | SHA256     | SHA256 (ring backend)     |
-| SHA384     | SHA384     | SHA384 (ring backend)     |
-| SHA512     | SHA512     | SHA512 (ring backend)     |
-| SHA512/256 | SHA512/256 | SHA512/256 (ring backend) |
+| ring       | hashes     | mix                  |
+|------------|------------|----------------------|
+|            | MD2        | MD2 (hashes 后端)      |
+|            | MD4        | MD4 (hashes 后端)      |
+|            | MD5        | MD5 (hashes 后端)      |
+|            | SHA1       | SHA1 (hashes 后端)     |
+|            | SHA224     | SHA224 (hashes 后端)   |
+| SHA256     | SHA256     | SHA256 (ring 后端)     |
+| SHA384     | SHA384     | SHA384 (ring 后端)     |
+| SHA512     | SHA512     | SHA512 (ring 后端)     |
+| SHA512/256 | SHA512/256 | SHA512/256 (ring 后端) |
 
-### Calculate
+### 计算
 
-Calculate hash for file(s) or text.
+计算文件或文本的哈希。
 
 ```bash
-$ # Usage:
-$ #  ezcheck calculate|c [ALGORITHM (Default SHA256)] (-f file(s)/"-" for standard input | -t text)
+$ # 用法：
+$ #  ezcheck calculate|c [算法 (默认：SHA256)] (-f 文件/"-"则从标准输入读取 | -t 文本)
 $
-$ # Examples:
+$ # 例子：
 $ ezcheck c sha256 -f image.jpg
 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f  image.jpg
 $
@@ -118,19 +113,19 @@ $ ezcheck calculate -f image.jpg
 No algorithm specified. Using SHA256 as the default.
 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f  image.jpg
 $
-$ # We could also redirect the output into a file, just like shasum does.
+$ # 我们也可以将输出重定向到文件中，正如 shasum 所做的那样。
 $ ezcheck calculate sha256 -f image.jpg > sha256sum.txt
 ```
 
-### Compare
+### 对比
 
-Compare with given hash.
+与给定的哈希比较。
 
 ```bash
-$ # Usage:
-$ #  ezcheck compare|m [ALGORITHM (Leave blank to automatically detect algorithm)] (-f file/"-" for standard input | -t text) -c hash
+$ # 用法：
+$ #  ezcheck compare|m [算法 (留空则自动检测算法)] (-f 文件/"-"则从标准输入读取 | -t 文本) -c 需要对比的哈希
 $  
-$ # Examples:
+$ # 例子：
 $ ezcheck m sha256 -f image.jpg -c 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f
 SHA256 OK
 $
@@ -140,19 +135,19 @@ $
 $ ezcheck compare sha256 -t "Hello" -c 085f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
 SHA256 FAILED  Current Hash:  185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
 $
-$ # Auto detect hash algorithm
+$ # 自动检测算法
 $ ezcheck compare -f image.jpg -c bebc102992450c68e5543383889e27c9
 INFO: Hash Algorithm could be MD5, MD4, MD2
 MD5 FAILED  Current Hash:  cb74bb502cc0949aad5cd838f91f0623
 MD4 OK
 ```
 
-### Check
+### 验证
 
-Check with given shasum-style check file.
+与给定的 shasum 样式的验证文件对比。
 
-shasum-style check file could be generated from [shasum](https://linux.die.net/man/1/shasum)
-and [ezcheck](https://github.com/Metaphorme/ezcheck). It looks like:
+shasum 样式的验证文件可以由 [shasum](https://linux.die.net/man/1/shasum)
+或 [ezcheck](https://github.com/Metaphorme/ezcheck) 生成，它的形式是这样的：
 
 ```
 00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95  滕王阁序.txt
@@ -160,16 +155,16 @@ and [ezcheck](https://github.com/Metaphorme/ezcheck). It looks like:
 ```
 
 ```bash
-$ # Usage:
-$ #  ezcheck check|k [ALGORITHM (Leave blank to automatically detect algorithm)] -c check-file
+$ # 用法：
+$ #  ezcheck check|k [算法 (留空则自动检测算法)] -c 验证文件
 $
-$ # Warning: The shasum file (or check file) should be in the same directory with files to be checked.
-$ # Example:
+$ # 警告：验证文件应当与需要检查的文件在同一目录。
+$ # 例子：
 $ ezcheck k sha256 -c sha256sum.txt 
 滕王阁序.txt: SHA256 OK
 image.jpg: SHA256 OK
 $
-$ # Auto detect hash algorithm
+$ # 自动检测哈希算法
 $ cat sha256sum.txt
 9ec44ac67ab1e1c98fe0406478d5297d  滕王阁序.txt
 bebc102992450c68e5543383889e27c9  image.jpg
@@ -179,8 +174,8 @@ $ ezcheck check -c sha256sum.txt
 image.jpg: MD5 FAILED  Current Hash:  cb74bb502cc0949aad5cd838f91f0623
 image.jpg: MD4 OK
 $
-$ # Actually, ezcheck supports various algorithm in the same check file in auto detect.
-$ # 🤔 But why this happens?
+$ # 实际上，ezcheck 的自动检测模式支持在同一验证文件中使用不同的算法。
+$ # 🤔 但这种事为什么会发生呢？
 $ cat sha256sum.txt
 00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95  滕王阁序.txt
 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f *image.jpg
@@ -193,18 +188,18 @@ image.jpg: SHA256 OK
 滕王阁序.txt: MD4 OK
 ```
 
-## Benchmark
+## 基准测试
 
-### Method
+### 实验方法
 
-* Device: MacBook Air M1 8GB
+* 测试设备：MacBook Air M1 8GB
 
-* Steps:
+* 步骤：
 
-1. Run and repeat 3 times:
+1. 运行并重复 3 次：
     ```bash
     $ count=10000  # Test size = 1MiB * $count
-    $ # Bare, Speed of generating the data
+    $ # Bare（数据生成速度）
     $ dd if=/dev/zero bs=1M count=$count | pv > /dev/null
     $ # ezcheck-hashes
     $ dd if=/dev/zero bs=1M count=$count | pv | ./ezcheck-hashes calculate sha256 -f -
@@ -214,20 +209,20 @@ image.jpg: SHA256 OK
     $ dd if=/dev/zero bs=1M count=$count | pv | sha256sum
     ```
 
-2. Calculate the average value.
+2. 计算平均值。
 
-### Result
+### 结果
 
-| Command/Speed(GiB/s)/Test size(MiB) | 1    | 100  | 500  | 1000 | 5000 | 10000 |
-|-------------------------------------|------|------|------|------|------|-------|
-| Bare (Speed of generating the data) | 2.13 | 3.02 | 4.59 | 5.31 | 5.97 | 6.07  |
-| ezcheck-hashes                      | 0.13 | 0.28 | 0.29 | 0.30 | 0.30 | 0.30  |
-| ezcheck-ring                        | 0.58 | 1.24 | 1.57 | 1.63 | 1.68 | 1.68  |
-| sha256sum                           | 0.73 | 1.26 | 1.63 | 1.69 | 1.75 | 1.81  |
+| 工具 / 速度 (GiB/s) / 测试数据大小 (MiB) | 1    | 100  | 500  | 1000 | 5000 | 10000 |
+|--------------------------------|------|------|------|------|------|-------|
+| Bare（数据生成速度）                   | 2.13 | 3.02 | 4.59 | 5.31 | 5.97 | 6.07  |
+| ezcheck-hashes                 | 0.13 | 0.28 | 0.29 | 0.30 | 0.30 | 0.30  |
+| ezcheck-ring                   | 0.58 | 1.24 | 1.57 | 1.63 | 1.68 | 1.68  |
+| sha256sum                      | 0.73 | 1.26 | 1.63 | 1.69 | 1.75 | 1.81  |
 
 ![benchmark](./benchmark.png)
 
-## License
+## 许可证
 
 ```
 MIT License
