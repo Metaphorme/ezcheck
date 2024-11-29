@@ -5,7 +5,7 @@
 [![Crates.io Version](https://img.shields.io/crates/v/ezcheck?logo=rust)](https://crates.io/crates/ezcheck)
 [![Mirror Gitee](https://img.shields.io/badge/Mirror-Gitee-blue?logo=gitee)](https://gitee.com/metaphorme/ezcheck)
 
-ezcheck（或 easy check）是一个符合人体工程学、输出标准的命令行工具，用于计算、对比和验证字符串或文件的哈希值。
+ezcheck（或 easy check）是一个易于使用、轻量、跨平台、高性能的用于计算、对比和验证字符串或文件哈希值的工具。
 
 ezcheck 有三个后端：[ring](https://docs.rs/ring)，[hashes](https://docs.rs/hashes)
 和混合后端（mix backend，同时使用[ring](https://docs.rs/ring)，[hashes](https://docs.rs/hashes)），并且您只能选择其中一个。这些后端的主要差异在于：

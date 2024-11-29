@@ -7,8 +7,8 @@
 
 [中文文档](./README_zh.md)
 
-ezcheck(easy check) is an ergonomic, standard-output command-line tool for calculating, comparing, and verifying the
-hash of strings and files.
+ezcheck(easy check) is an easy-to-use, lightweight, cross-platform, and high-performance tool for calculating,
+comparing, and verifying hash of strings and files.
 
 ezcheck have three backends: [ring](https://docs.rs/ring), [hashes](https://docs.rs/hashes) and mix
 backend([ring](https://docs.rs/ring) and [hashes](https://docs.rs/hashes)), and you can only choose
