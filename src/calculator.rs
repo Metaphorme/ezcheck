@@ -28,7 +28,12 @@ use digest::DynDigest;
 #[cfg(any(feature = "ring_backend", feature = "mix_backend"))]
 use ring::digest::{Context, SHA256, SHA384, SHA512, SHA512_256};
 
-// https://github.com/rust-lang/rust/issues/47133
+/*
+* Why we set BUFFER_SIZE as 8192
+    https://doc.rust-lang.org/std/io/struct.BufReader.html#impl-BufReader%3CR%3E
+* Why we set allow(dead_code)
+    https://github.com/rust-lang/rust/issues/47133
+*/
 #[allow(dead_code)]
 pub const BUFFER_SIZE: usize = 8192;
 
@@ -183,7 +188,8 @@ pub fn hash_calculator<R: BufRead>(
             }
         }
         Ok(bytes_to_hex(&hasher.finish().as_ref().to_vec()))
-    } else {  // hashes backend
+    } else {
+        // hashes backend
         let mut hasher: Box<dyn DynDigest> = match algorithm {
             SupportedAlgorithm::MD2 => Box::new(md2::Md2::default()),
             SupportedAlgorithm::MD4 => Box::new(md4::Md4::default()),

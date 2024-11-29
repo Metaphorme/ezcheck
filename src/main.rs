@@ -224,7 +224,7 @@ fn detect_algorithm(input: Option<String>) -> Option<SupportedAlgorithm> {
 }
 
 fn calculate(algorithm: Option<String>, file: Option<Vec<String>>, text: Option<String>) {
-    // --file option and -- text option are mutually exclusive
+    // --file option and --text option are mutually exclusive
     if file.is_some() && text.is_some() {
         eprintln!("Error: Both file and text options cannot be used together.");
         process::exit(1);
@@ -273,7 +273,7 @@ fn compare(
     text: Option<String>,
     check_hash: Option<String>,
 ) {
-    // --file option and -- text option are mutually exclusive
+    // --file option and --text option are mutually exclusive
     if file.is_some() && text.is_some() {
         eprintln!("Error: Both file and text options cannot be used together.");
         process::exit(1);
