@@ -57,9 +57,7 @@ $ x env use ezcheck
 
 ### Build from source
 
-#### Requirements
-
-* [Rust 1.71.0+](./Cargo.toml#L13)
+[![MSRV](https://img.shields.io/crates/msrv/ezcheck)](./Cargo.toml#L11)
 
 #### Build
 
