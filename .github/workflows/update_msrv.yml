@@ -26,12 +26,12 @@ jobs:
         run: echo "MSRV=$(cargo msrv find --output-format minimal)" >> $GITHUB_ENV
 
       - name: Set msrv
-        run: cargo msrv set $MSRV
+        run: cargo msrv set ${{ env.MSRV }}
 
       - name: Update
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add Cargo.toml
-          git commit -m "Set MSVC into $(echo $MSVC)"
+          git commit -m "Set MSRV into ${{ env.MSRV }}"
           git push
