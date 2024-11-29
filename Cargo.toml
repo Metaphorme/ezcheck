@@ -8,9 +8,7 @@ documentation = "https://docs.rs/ezcheck"
 readme = "README.md"
 authors = ["Heqi Liu 77@diazepam.cc"]
 license = "MIT"
-
-# MSRV
-rust-version = "1.71.0"
+rust-version = "1.74.1"
 
 [dependencies]
 md2 = { version = "0.10", optional = true }
