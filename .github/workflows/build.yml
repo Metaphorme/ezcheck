@@ -34,7 +34,6 @@ jobs:
     runs-on: ${{ matrix.config.os }}
     permissions:
       contents: write
-    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
