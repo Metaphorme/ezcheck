@@ -2,7 +2,7 @@ name: Build
 
 on:
   release:
-    types: [published]
+    types: [ published ]
   workflow_dispatch:
 
 env:
@@ -57,8 +57,8 @@ jobs:
 
       - name: Install cross
         if: matrix.config.os == 'ubuntu-latest'
-        run: cargo install cross --git https://github.com/cross-rs/cross
-        
+        run: RUSTFLAGS="" cargo install cross --git https://github.com/cross-rs/cross
+
       - name: Build
         if: matrix.config.os == 'ubuntu-latest'
         run: cross build --release --no-default-features --features ${{ matrix.backend }} --target ${{ matrix.config.target }}
