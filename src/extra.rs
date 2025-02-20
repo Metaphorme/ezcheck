@@ -44,7 +44,32 @@ pub fn bytes_to_hex(bytes: &[u8]) -> String {
 // }
 
 // Detect hash algorithm
-#[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+#[cfg(any(feature = "mix_backend"))]
+pub fn detect_hash_algorithm<S: AsRef<str>>(hash: S) -> Result<Vec<SupportedAlgorithm>, String> {
+    match hash.as_ref().len() {
+        40 => Ok(vec![SupportedAlgorithm::SHA1]),
+        56 => Ok(vec![SupportedAlgorithm::SHA224]),
+        64 => Ok(vec![
+            SupportedAlgorithm::SHA256,
+            SupportedAlgorithm::SHA512_256,
+        ]),
+        96 => Ok(vec![SupportedAlgorithm::SHA384]),
+        128 => Ok(vec![SupportedAlgorithm::SHA512]),
+        10 => Ok(vec![SupportedAlgorithm::XXHASH32]),
+        18 => Ok(vec![
+            SupportedAlgorithm::XXHASH64,
+            SupportedAlgorithm::XXHASH3_64,
+        ]),
+        32 => Ok(vec![
+            SupportedAlgorithm::MD5,
+            SupportedAlgorithm::MD4,
+            SupportedAlgorithm::MD2,
+        ]),
+        _ => Err(String::from("Error: Invalid hash.")),
+    }
+}
+
+#[cfg(any(feature = "hashes_backend"))]
 pub fn detect_hash_algorithm<S: AsRef<str>>(hash: S) -> Result<Vec<SupportedAlgorithm>, String> {
     match hash.as_ref().len() {
         40 => Ok(vec![SupportedAlgorithm::SHA1]),

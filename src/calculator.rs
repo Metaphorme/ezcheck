@@ -28,6 +28,11 @@ use digest::DynDigest;
 #[cfg(any(feature = "ring_backend", feature = "mix_backend"))]
 use ring::digest::{Context, SHA256, SHA384, SHA512, SHA512_256};
 
+#[cfg(any(feature = "mix_backend"))]
+use core::hash::Hasher;
+#[cfg(any(feature = "mix_backend"))]
+use twox_hash::{XxHash32, XxHash3_64, XxHash64};
+
 /*
 * Why we set BUFFER_SIZE as 8192
     https://doc.rust-lang.org/std/io/struct.BufReader.html#impl-BufReader%3CR%3E
@@ -37,7 +42,45 @@ use ring::digest::{Context, SHA256, SHA384, SHA512, SHA512_256};
 #[allow(dead_code)]
 pub const BUFFER_SIZE: usize = 8192;
 
-#[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+#[cfg(any(feature = "mix_backend"))]
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum SupportedAlgorithm {
+    MD2,
+    MD4,
+    MD5,
+    SHA1,
+    SHA224,
+    SHA256,
+    SHA384,
+    SHA512,
+    SHA512_256,
+    XXHASH32,
+    XXHASH64,
+    XXHASH3_64,
+}
+
+#[cfg(any(feature = "mix_backend"))]
+impl fmt::Display for SupportedAlgorithm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let algorithm = match self {
+            SupportedAlgorithm::MD2 => "MD2",
+            SupportedAlgorithm::MD4 => "MD4",
+            SupportedAlgorithm::MD5 => "MD5",
+            SupportedAlgorithm::SHA1 => "SHA1",
+            SupportedAlgorithm::SHA224 => "SHA224",
+            SupportedAlgorithm::SHA256 => "SHA256",
+            SupportedAlgorithm::SHA384 => "SHA384",
+            SupportedAlgorithm::SHA512 => "SHA512",
+            SupportedAlgorithm::SHA512_256 => "SHA512_256",
+            SupportedAlgorithm::XXHASH32 => "XXHASH32",
+            SupportedAlgorithm::XXHASH64 => "XXHASH64",
+            SupportedAlgorithm::XXHASH3_64 => "XXHASH3_64",
+        };
+        write!(f, "{}", algorithm)
+    }
+}
+
+#[cfg(any(feature = "hashes_backend"))]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SupportedAlgorithm {
     MD2,
@@ -51,7 +94,7 @@ pub enum SupportedAlgorithm {
     SHA512_256,
 }
 
-#[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+#[cfg(any(feature = "hashes_backend"))]
 impl fmt::Display for SupportedAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let algorithm = match self {
@@ -188,6 +231,37 @@ pub fn hash_calculator<R: BufRead>(
             }
         }
         Ok(bytes_to_hex(&hasher.finish().as_ref().to_vec()))
+    } else if algorithm == SupportedAlgorithm::XXHASH32  // XXHASH
+        || algorithm == SupportedAlgorithm::XXHASH64
+        || algorithm == SupportedAlgorithm::XXHASH3_64
+    {
+        let mut hasher: Box<dyn Hasher> = match algorithm {
+            SupportedAlgorithm::XXHASH32 => Box::new(XxHash32::with_seed(0)),
+            SupportedAlgorithm::XXHASH64 => Box::new(XxHash64::with_seed(0)),
+            SupportedAlgorithm::XXHASH3_64 => Box::new(XxHash3_64::with_seed(0)),
+            _ => Box::new(XxHash32::with_seed(0)), // Can't happen!
+        };
+        loop {
+            match reader.read(&mut buffer) {
+                Ok(read_bytes) => {
+                    if read_bytes == 0 {
+                        break; // Finish reading the file
+                    }
+                    hasher.write(&buffer[..read_bytes]);
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+
+        match algorithm {
+            SupportedAlgorithm::XXHASH32 => return Ok(format!("0x{:0>8x}", hasher.finish())),
+            SupportedAlgorithm::XXHASH64 | SupportedAlgorithm::XXHASH3_64 => {
+                return Ok(format!("0x{:0>16x}", hasher.finish()))
+            }
+            _ => Ok(format!("0x{:0>32x}", 0)), // Unreachable, wait for xxhash3_128.
+        }
     } else {
         // hashes backend
         let mut hasher: Box<dyn DynDigest> = match algorithm {
@@ -222,6 +296,36 @@ mod test_calculator {
     use std::io::BufReader;
 
     const TEST_WORD: &[u8; 16] = b"Veni, vidi, vici";
+
+    #[cfg(any(feature = "mix_backend"))]
+    #[test]
+    fn test_xxhash32() {
+        let reader = BufReader::new(&TEST_WORD[..]);
+        assert_eq!(
+            hash_calculator(reader, SupportedAlgorithm::XXHASH32).unwrap(),
+            "0x0163d3a2"
+        );
+    }
+
+    #[cfg(any(feature = "mix_backend"))]
+    #[test]
+    fn test_xxhash64() {
+        let reader = BufReader::new(&TEST_WORD[..]);
+        assert_eq!(
+            hash_calculator(reader, SupportedAlgorithm::XXHASH64).unwrap(),
+            "0x4a34911ba20e6c30"
+        );
+    }
+
+    #[cfg(any(feature = "mix_backend"))]
+    #[test]
+    fn test_xxhash3_64() {
+        let reader = BufReader::new(&TEST_WORD[..]);
+        assert_eq!(
+            hash_calculator(reader, SupportedAlgorithm::XXHASH3_64).unwrap(),
+            "0x802c0db623389036"
+        );
+    }
 
     #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
     #[test]

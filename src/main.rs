@@ -60,7 +60,7 @@ struct Cli {
     args: Args,
 }
 
-#[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+#[cfg(any(feature = "mix_backend"))]
 #[derive(Subcommand)]
 enum Args {
     /// Calculate hash for a file or text (alias: c)
@@ -76,7 +76,10 @@ enum Args {
         ///  * SHA256(default)
         ///  * SHA384
         ///  * SHA512
-        ///  * SHA512/256
+        ///  * SHA512_256
+        ///  * XXHASH32
+        ///  * XXHASH64
+        ///  * XXHASH3_64
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
@@ -103,7 +106,10 @@ enum Args {
         ///  * SHA256
         ///  * SHA384
         ///  * SHA512
-        ///  * SHA512/256
+        ///  * SHA512_256
+        ///  * XXHASH32
+        ///  * XXHASH64
+        ///  * XXHASH3_64
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
@@ -134,7 +140,94 @@ enum Args {
         ///  * SHA256
         ///  * SHA384
         ///  * SHA512
-        ///  * SHA512/256
+        ///  * SHA512_256
+        ///  * XXHASH32
+        ///  * XXHASH64
+        ///  * XXHASH3_64
+        #[arg(verbatim_doc_comment)]
+        algorithm: Option<String>,
+
+        /// shasum file to check with.
+        #[arg(short, long)]
+        check_file: Option<String>,
+    },
+}
+
+#[cfg(any(feature = "hashes_backend"))]
+#[derive(Subcommand)]
+enum Args {
+    /// Calculate hash for a file or text (alias: c)
+    #[command(alias = "c")]
+    Calculate {
+        /// Optional algorithm to use for calculate hash.
+        /// Supported algorithms:
+        ///  * MD2(Unsafe)
+        ///  * MD4(Unsafe)
+        ///  * MD5(Unsafe)
+        ///  * SHA1(Unsafe)
+        ///  * SHA224
+        ///  * SHA256(default)
+        ///  * SHA384
+        ///  * SHA512
+        ///  * SHA512_256
+        #[arg(verbatim_doc_comment)]
+        algorithm: Option<String>,
+
+        /// File(s) to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
+        #[arg(short, long, num_args = 1..)]
+        file: Option<Vec<String>>,
+
+        /// Direct text input for hash calculation.
+        #[arg(short, long)]
+        text: Option<String>,
+    },
+
+    /// Compare with given hash (alias: m)
+    #[command(alias = "m")]
+    Compare {
+        /// Optional algorithm to use for calculate hash.
+        /// Leave blank to automatically detect the hash algorithm.
+        /// Supported algorithms:
+        ///  * MD2(Unsafe)
+        ///  * MD4(Unsafe)
+        ///  * MD5(Unsafe)
+        ///  * SHA1(Unsafe)
+        ///  * SHA224
+        ///  * SHA256
+        ///  * SHA384
+        ///  * SHA512
+        ///  * SHA512_256
+        #[arg(verbatim_doc_comment)]
+        algorithm: Option<String>,
+
+        /// File to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
+        #[arg(short, long)]
+        file: Option<String>,
+
+        /// Direct text input for hash comparing.
+        #[arg(short, long)]
+        text: Option<String>,
+
+        /// Hash to compare with.
+        #[arg(short, long)]
+        check_hash: Option<String>,
+    },
+
+    /// Check with given shasum file (alias: k)
+    #[command(alias = "k")]
+    Check {
+        /// Optional algorithm to use for calculate hash.
+        /// Leave blank to automatically detect the hash algorithm.
+        /// Supported algorithms:
+        ///  * MD2(Unsafe)
+        ///  * MD4(Unsafe)
+        ///  * MD5(Unsafe)
+        ///  * SHA1(Unsafe)
+        ///  * SHA224
+        ///  * SHA256
+        ///  * SHA384
+        ///  * SHA512
+        ///  * SHA512_256
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
@@ -155,7 +248,7 @@ enum Args {
         ///  * SHA256(default)
         ///  * SHA384
         ///  * SHA512
-        ///  * SHA512/256
+        ///  * SHA512_256
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
@@ -177,7 +270,7 @@ enum Args {
         ///  * SHA256
         ///  * SHA384
         ///  * SHA512
-        ///  * SHA512/256
+        ///  * SHA512_256
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
@@ -203,7 +296,7 @@ enum Args {
         ///  * SHA256
         ///  * SHA384
         ///  * SHA512
-        ///  * SHA512/256
+        ///  * SHA512_256
         #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 

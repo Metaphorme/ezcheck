@@ -147,7 +147,35 @@ impl ComputeHash for Data {
     }
 }
 
-#[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+#[cfg(any(feature = "mix_backend"))]
+pub fn match_algorithm<S: AsRef<str>>(
+    algorithm: S,
+) -> Result<calculator::SupportedAlgorithm, String> {
+    let algorithm = algorithm.as_ref().to_lowercase();
+    let algorithm = algorithm.as_ref();
+
+    match algorithm {
+        "md2" => Ok(calculator::SupportedAlgorithm::MD2),
+        "md4" => Ok(calculator::SupportedAlgorithm::MD4),
+        "md5" => Ok(calculator::SupportedAlgorithm::MD5),
+        "sha1" => Ok(calculator::SupportedAlgorithm::SHA1),
+        "sha224" => Ok(calculator::SupportedAlgorithm::SHA224),
+        "sha256" => Ok(calculator::SupportedAlgorithm::SHA256),
+        "sha384" => Ok(calculator::SupportedAlgorithm::SHA384),
+        "sha512" => Ok(calculator::SupportedAlgorithm::SHA512),
+        "sha512_256" | "sha512-256" | "sha512/256" => {
+            Ok(calculator::SupportedAlgorithm::SHA512_256)
+        }
+        "xxhash32" => Ok(calculator::SupportedAlgorithm::XXHASH32),
+        "xxhash64" => Ok(calculator::SupportedAlgorithm::XXHASH64),
+        "xxhash3_64" | "xxhash3-64" | "xxhash3/64" => {
+            Ok(calculator::SupportedAlgorithm::XXHASH3_64)
+        }
+        _ => Err(format!("Error: Unsupported algorithm: {}", algorithm)),
+    }
+}
+
+#[cfg(any(feature = "hashes_backend"))]
 pub fn match_algorithm<S: AsRef<str>>(
     algorithm: S,
 ) -> Result<calculator::SupportedAlgorithm, String> {

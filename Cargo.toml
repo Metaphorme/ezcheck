@@ -19,6 +19,7 @@ sha2 = { version = "0.10", optional = true }
 digest = { version = "0.10", optional = true }
 ring = { version = "0.17", optional = true }
 clap = { version = "4.5", features = ["derive"] }
+twox-hash = { version = "2.1.0", features = ["std"] }
 
 [features]
 default = ["mix_backend"]
