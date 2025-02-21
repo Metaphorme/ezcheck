@@ -8,18 +8,18 @@
 [中文文档](./README_zh.md)
 
 ezcheck(easy check) is an easy-to-use, lightweight, cross-platform, and high-performance tool for calculating,
-comparing, and verifying hash of strings and files.
+comparing, and verifying hash of strings and files. Designed to prevent content tampering and ensure file integrity.
 
 ezcheck have three backends: [ring](https://docs.rs/ring), [hashes](https://docs.rs/hashes) and mix
 backend([ring](https://docs.rs/ring) and [hashes](https://docs.rs/hashes)), and you can only choose
 one of them. The main differences between them are:
 
-| Features             | ring                                                       | hashes                                                          | mix                                                             |
-|----------------------|------------------------------------------------------------|-----------------------------------------------------------------|-----------------------------------------------------------------|
-| Speed                | Fast.                                                      | About 5 times slower than ring.                                 | Use the fastest backend that supports the algorithm.            | 
-| Supported algorithms | SHA256, SHA384, SHA512, SHA512/256                         | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 |
-| Implement languages  | Assembly, Rust, C and etc..                                | Rust                                                            | Assembly, Rust, C and etc..                                     |
-| Compatibility        | May not work on every machine with different architecture. | Works well with Rust.                                           | Same to ring.                                                   |
+| Features             | ring                                                       | hashes                                                          | mix(Recommended)                                                                       |
+|----------------------|------------------------------------------------------------|-----------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| Speed                | Fast.                                                      | About 5 times slower than ring.                                 | Use the fastest backend that supports the algorithm.                                   | 
+| Supported algorithms | SHA256, SHA384, SHA512, SHA512/256                         | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256, XXH32, XXH64, XXH3_64 |
+| Implement languages  | Assembly, Rust, C and etc..                                | Rust                                                            | Assembly, Rust, C and etc..                                                            |
+| Compatibility        | May not work on every machine with different architecture. | Works well with Rust.                                           | Same to ring.                                                                          |
 
 ❗️ To achieve both fastest speed and maximum compatibility, the default backend is **mix backend**.
 
@@ -98,6 +98,9 @@ Supported hash algorithms of different backends:
 | SHA384     | SHA384     | SHA384 (ring backend)     |
 | SHA512     | SHA512     | SHA512 (ring backend)     |
 | SHA512/256 | SHA512/256 | SHA512/256 (ring backend) |
+|            |            | XXH32                     |
+|            |            | XXH64                     |
+|            |            | XXH3_64                   |
 
 ### Calculate
 
@@ -198,37 +201,80 @@ image.jpg: SHA256 OK
 
 ## Benchmark
 
-### Method
+### SHA256 Benchmark Tests
+
+#### Method
 
 * Device: MacBook Air M1 8GB
 
-* Steps:
+* Steps
 
-1. Run and repeat 3 times:
-    ```bash
-    $ count=10000  # Test size = 1MiB * $count
-    $ # Bare, Speed of generating the data
-    $ dd if=/dev/zero bs=1M count=$count | pv > /dev/null
-    $ # ezcheck-hashes
-    $ dd if=/dev/zero bs=1M count=$count | pv | ./ezcheck-hashes calculate sha256 -f -
-    $ # ezcheck-ring
-    $ dd if=/dev/zero bs=1M count=$count | pv | ./ezcheck-ring calculate sha256 -f -
-    $ # sha256sum
-    $ dd if=/dev/zero bs=1M count=$count | pv | sha256sum
-    ```
+    1. Run and repeat 3 times:
+        ```bash
+        $ count=10000  # Test size = 1MiB * $count
+        $ # Bare, Speed of generating the data
+        $ dd if=/dev/zero bs=1M count=$count | pv > /dev/null
+        $ # ezcheck-hashes
+        $ dd if=/dev/zero bs=1M count=$count | pv | ./ezcheck-hashes calculate sha256 -f -
+        $ # ezcheck-ring
+        $ dd if=/dev/zero bs=1M count=$count | pv | ./ezcheck-ring calculate sha256 -f -
+        $ # sha256sum
+        $ dd if=/dev/zero bs=1M count=$count | pv | sha256sum
+        ```
 
-2. Calculate the average value.
+    2. Calculate the average value.
 
-### Result
+#### Result
 
-| Command/Speed(GiB/s)/Test size(MiB) | 1    | 100  | 500  | 1000 | 5000 | 10000 |
-|-------------------------------------|------|------|------|------|------|-------|
-| Bare (Speed of generating the data) | 2.13 | 3.02 | 4.59 | 5.31 | 5.97 | 6.07  |
-| ezcheck-hashes                      | 0.13 | 0.28 | 0.29 | 0.30 | 0.30 | 0.30  |
-| ezcheck-ring                        | 0.58 | 1.24 | 1.57 | 1.63 | 1.68 | 1.68  |
-| sha256sum                           | 0.73 | 1.26 | 1.63 | 1.69 | 1.75 | 1.81  |
+| Implementation / Speed(GiB/s) / Test size(MiB) | 1    | 100  | 500  | 1000 | 5000 | 10000 |
+|------------------------------------------------|------|------|------|------|------|-------|
+| Bare (Speed of generating the data)            | 2.13 | 3.02 | 4.59 | 5.31 | 5.97 | 6.07  |
+| ezcheck-hashes                                 | 0.13 | 0.28 | 0.29 | 0.30 | 0.30 | 0.30  |
+| ezcheck-ring                                   | 0.58 | 1.24 | 1.57 | 1.63 | 1.68 | 1.68  |
+| sha256sum                                      | 0.73 | 1.26 | 1.63 | 1.69 | 1.75 | 1.81  |
 
-![benchmark](./benchmark.png)
+![benchmark](./benchmark-sha256.png)
+
+### Speed vs. Algorithms, Implementations
+
+#### Method
+
+* Device: MacBook Air M1 8GB
+
+* Steps
+
+    1. Run:
+        ```bash
+        $ algorithm=sha256
+        $ # ezcheck-hashes
+        $ dd if=/dev/zero bs=1M count=10000 | pv | ./ezcheck-hashes calculate $algorithm -f -
+        $ # ezcheck-ring
+        $ dd if=/dev/zero bs=1M count=10000 | pv | ./ezcheck-ring calculate $algorithm -f -
+        $ # ezcheck-mix
+        $ dd if=/dev/zero bs=1M count=10000 | pv | ./ezcheck-mix calculate $algorithm -f -
+        ```
+    2. Calculate the average value.
+
+#### Result
+
+| Algorithms / Speed(GiB/s) / Implementations | ring   | hashes   | mix      |
+|---------------------------------------------|--------|----------|----------|
+| MD2                                         | 	null* | 	0.00896 | 	0.00896 |
+| MD4                                         | 	null* | 	0.852   | 	0.852   |               
+| MD5                                         | 	null* | 	0.549   | 	0.549   |                     
+| SHA1                                        | 	null* | 	0.802   | 	0.802   |                      
+| SHA224	                                     | null*  | 	0.299   | 	0.299   |                  
+| SHA256                                      | 	1.69	 | 0.298    | 	1.70    |                   
+| SHA384                                      | 	1.12	 | 0.473    | 	1.13    |                   
+| SHA512	                                     | 1.13	  | 0.473    | 	1.13    |                   
+| SHA512/256                                  | 	1.13	 | 0.473    | 	1.13    |               
+| XXHASH32	                                   | null*	 | null*	   | 2.45     |               
+| XXHASH64	                                   | null*	 | null*	   | 3.27     |               
+| XXHASH3_64	                                 | null*  | 	null*   | 	3.65    |    
+
+_null*: The algorithm is not implemented in this implementation._
+
+![benchmark](./benchmark-algorithms-implementations.png)
 
 ## License
 

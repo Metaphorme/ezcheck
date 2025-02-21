@@ -5,17 +5,17 @@
 [![Crates.io Version](https://img.shields.io/crates/v/ezcheck?logo=rust)](https://crates.io/crates/ezcheck)
 [![Mirror Gitee](https://img.shields.io/badge/Mirror-Gitee-blue?logo=gitee)](https://gitee.com/metaphorme/ezcheck)
 
-ezcheck（或 easy check）是一个易于使用、轻量、跨平台、高性能的用于计算、对比和验证字符串或文件哈希值的工具。
+ezcheck（或 easy check）是一个轻量、高性能、跨平台、易于使用的用于计算、对比和验证字符串或文件哈希值的工具，用于防止内容篡改和确保文件的完整性。
 
 ezcheck 有三个后端：[ring](https://docs.rs/ring)，[hashes](https://docs.rs/hashes)
 和混合后端（mix backend，同时使用[ring](https://docs.rs/ring)，[hashes](https://docs.rs/hashes)），并且您只能选择其中一个。这些后端的主要差异在于：
 
-| 特点    | ring                               | hashes                                                          | 混合后端（mix）                                                       |
-|-------|------------------------------------|-----------------------------------------------------------------|-----------------------------------------------------------------|
-| 速度    | 非常快。                               | 大约比 ring 慢五倍。                                                   | 使用支持此算法的最快后端。                                                   | 
-| 支持的算法 | SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 |
-| 实现语言  | Assembly, Rust, C 等。               | Rust                                                            | Assembly, Rust, C 等。                                            |
-| 兼容性   | 可能无法在一些系统和架构上工作。                   | 和 Rust 兼容性一致。                                                   | 与 ring 相同。                                                      |
+| 特点    | ring                               | hashes                                                          | mix（混合后端，推荐使用）                                                                         |
+|-------|------------------------------------|-----------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| 速度    | 非常快。                               | 大约比 ring 慢五倍。                                                   | 使用支持此算法的最快后端。                                                                          | 
+| 支持的算法 | SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256, XXH32, XXH64, XXH3_64 |
+| 实现语言  | Assembly, Rust, C 等。               | Rust                                                            | Assembly, Rust, C 等。                                                                   |
+| 兼容性   | 可能无法在一些系统和架构上工作。                   | 和 Rust 兼容性一致。                                                   | 与 ring 相同。                                                                             |
 
 ❗️ 为了兼顾最快的速度和最大的算法兼容性，默认后端是混合后端（mix backend）。
 
@@ -93,6 +93,9 @@ $ cargo test --no-default-features --features hashes_backend  # hashes backend
 | SHA384     | SHA384     | SHA384 (ring 后端)     |
 | SHA512     | SHA512     | SHA512 (ring 后端)     |
 | SHA512/256 | SHA512/256 | SHA512/256 (ring 后端) |
+|            |            | XXH32                |
+|            |            | XXH64                |
+|            |            | XXH3_64              |
 
 ### 计算
 
@@ -193,37 +196,80 @@ image.jpg: SHA256 OK
 
 ## 基准测试
 
-### 实验方法
+### SHA256 基准测试
 
-* 测试设备：MacBook Air M1 8GB
+#### 实验方法
 
-* 步骤：
+* 设备：MacBook Air M1 8GB
 
-1. 运行并重复 3 次：
-    ```bash
-    $ count=10000  # Test size = 1MiB * $count
-    $ # Bare（数据生成速度）
-    $ dd if=/dev/zero bs=1M count=$count | pv > /dev/null
-    $ # ezcheck-hashes
-    $ dd if=/dev/zero bs=1M count=$count | pv | ./ezcheck-hashes calculate sha256 -f -
-    $ # ezcheck-ring
-    $ dd if=/dev/zero bs=1M count=$count | pv | ./ezcheck-ring calculate sha256 -f -
-    $ # sha256sum
-    $ dd if=/dev/zero bs=1M count=$count | pv | sha256sum
-    ```
+* 步骤
 
-2. 计算平均值。
+    1. 运行并重复 3 次：
+        ```bash
+        $ count=10000  # Test size = 1MiB * $count
+        $ # Bare, Speed of generating the data
+        $ dd if=/dev/zero bs=1M count=$count | pv > /dev/null
+        $ # ezcheck-hashes
+        $ dd if=/dev/zero bs=1M count=$count | pv | ./ezcheck-hashes calculate sha256 -f -
+        $ # ezcheck-ring
+        $ dd if=/dev/zero bs=1M count=$count | pv | ./ezcheck-ring calculate sha256 -f -
+        $ # sha256sum
+        $ dd if=/dev/zero bs=1M count=$count | pv | sha256sum
+        ```
 
-### 结果
+    2. 计算平均值。
 
-| 工具 / 速度 (GiB/s) / 测试数据大小 (MiB) | 1    | 100  | 500  | 1000 | 5000 | 10000 |
-|--------------------------------|------|------|------|------|------|-------|
-| Bare（数据生成速度）                   | 2.13 | 3.02 | 4.59 | 5.31 | 5.97 | 6.07  |
-| ezcheck-hashes                 | 0.13 | 0.28 | 0.29 | 0.30 | 0.30 | 0.30  |
-| ezcheck-ring                   | 0.58 | 1.24 | 1.57 | 1.63 | 1.68 | 1.68  |
-| sha256sum                      | 0.73 | 1.26 | 1.63 | 1.69 | 1.75 | 1.81  |
+#### 实验结果
 
-![benchmark](./benchmark.png)
+| 实现 / 速度(GiB/s) / 数据量(MiB) | 1    | 100  | 500  | 1000 | 5000 | 10000 |
+|---------------------------|------|------|------|------|------|-------|
+| Bare（数据生成速度）              | 2.13 | 3.02 | 4.59 | 5.31 | 5.97 | 6.07  |
+| ezcheck-hashes            | 0.13 | 0.28 | 0.29 | 0.30 | 0.30 | 0.30  |
+| ezcheck-ring              | 0.58 | 1.24 | 1.57 | 1.63 | 1.68 | 1.68  |
+| sha256sum                 | 0.73 | 1.26 | 1.63 | 1.69 | 1.75 | 1.81  |
+
+![benchmark](./benchmark-sha256.png)
+
+### 速度 vs. 算法，实现
+
+#### 实验方法
+
+* 设备：MacBook Air M1 8GB
+
+* 步骤
+
+    1. 执行：
+        ```bash
+        $ algorithm=sha256
+        $ # ezcheck-hashes
+        $ dd if=/dev/zero bs=1M count=10000 | pv | ./ezcheck-hashes calculate $algorithm -f -
+        $ # ezcheck-ring
+        $ dd if=/dev/zero bs=1M count=10000 | pv | ./ezcheck-ring calculate $algorithm -f -
+        $ # ezcheck-mix
+        $ dd if=/dev/zero bs=1M count=10000 | pv | ./ezcheck-mix calculate $algorithm -f -
+        ```
+    2. 计算平均值
+
+#### 实验结果
+
+| 算法 / 速度(GiB/s) / 实现 | ring   | hashes   | mix      |
+|---------------------|--------|----------|----------|
+| MD2                 | 	null* | 	0.00896 | 	0.00896 |
+| MD4                 | 	null* | 	0.852   | 	0.852   |               
+| MD5                 | 	null* | 	0.549   | 	0.549   |                     
+| SHA1                | 	null* | 	0.802   | 	0.802   |                      
+| SHA224	             | null*  | 	0.299   | 	0.299   |                  
+| SHA256              | 	1.69	 | 0.298    | 	1.70    |                   
+| SHA384              | 	1.12	 | 0.473    | 	1.13    |                   
+| SHA512	             | 1.13	  | 0.473    | 	1.13    |                   
+| SHA512/256          | 	1.13	 | 0.473    | 	1.13    |               
+| XXHASH32	           | null*	 | null*	   | 2.45     |               
+| XXHASH64	           | null*	 | null*	   | 3.27     |               
+| XXHASH3_64	         | null*  | 	null*   | 	3.65    |    
+
+_null*: 此实现并未实现此算法。_
+
+![benchmark](./benchmark-algorithms-implementations.png)
 
 ## 许可证
 
