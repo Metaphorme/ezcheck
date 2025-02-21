@@ -166,9 +166,9 @@ pub fn match_algorithm<S: AsRef<str>>(
         "sha512_256" | "sha512-256" | "sha512/256" => {
             Ok(calculator::SupportedAlgorithm::SHA512_256)
         }
-        "xxhash32" => Ok(calculator::SupportedAlgorithm::XXHASH32),
-        "xxhash64" => Ok(calculator::SupportedAlgorithm::XXHASH64),
-        "xxhash3_64" | "xxhash3-64" | "xxhash3/64" => {
+        "xxhash32" | "xxh32" => Ok(calculator::SupportedAlgorithm::XXHASH32),
+        "xxhash64" | "xxh64" => Ok(calculator::SupportedAlgorithm::XXHASH64),
+        "xxh3_64" | "xxh3-64" | "xxh3/64" | "xxhash3_64" | "xxhash3-64" | "xxhash3/64" => {
             Ok(calculator::SupportedAlgorithm::XXHASH3_64)
         }
         _ => Err(format!("Error: Unsupported algorithm: {}", algorithm)),
