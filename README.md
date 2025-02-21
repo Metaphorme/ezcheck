@@ -14,12 +14,12 @@ ezcheck have three backends: [ring](https://docs.rs/ring), [hashes](https://docs
 backend([ring](https://docs.rs/ring) and [hashes](https://docs.rs/hashes)), and you can only choose
 one of them. The main differences between them are:
 
-| Features             | ring                                                       | hashes                                                          | mix(Recommended)                                                                       |
-|----------------------|------------------------------------------------------------|-----------------------------------------------------------------|----------------------------------------------------------------------------------------|
-| Speed                | Fast.                                                      | About 5 times slower than ring.                                 | Use the fastest backend that supports the algorithm.                                   | 
-| Supported algorithms | SHA256, SHA384, SHA512, SHA512/256                         | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256, XXH32, XXH64, XXH3_64 |
-| Implement languages  | Assembly, Rust, C and etc..                                | Rust                                                            | Assembly, Rust, C and etc..                                                            |
-| Compatibility        | May not work on every machine with different architecture. | Works well with Rust.                                           | Same to ring.                                                                          |
+| Features             | ring                                                       | hashes                                                          | mix(Recommended)                                                                                |
+|----------------------|------------------------------------------------------------|-----------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| Speed                | Fast.                                                      | About 5 times slower than ring.                                 | Use the fastest backend that supports the algorithm.                                            | 
+| Supported algorithms | SHA256, SHA384, SHA512, SHA512/256                         | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256, XXHASH32, XXHASH64, XXHASH3_64 |
+| Implement languages  | Assembly, Rust, C and etc..                                | Rust                                                            | Assembly, Rust, C and etc..                                                                     |
+| Compatibility        | May not work on every machine with different architecture. | Works well with Rust.                                           | Same to ring.                                                                                   |
 
 ❗️ To achieve both fastest speed and maximum compatibility, the default backend is **mix backend**.
 
@@ -29,9 +29,9 @@ them**.
 
 ## Setup
 
-### Install from binary
+### Direct Binary Download
 
-Download suitable binary from [release](https://github.com/Metaphorme/ezcheck/releases/latest).
+Download the suitable **mix backend** binary from the [release](https://github.com/Metaphorme/ezcheck/releases/latest).
 
 ### Install from Cargo
 
@@ -98,9 +98,9 @@ Supported hash algorithms of different backends:
 | SHA384     | SHA384     | SHA384 (ring backend)     |
 | SHA512     | SHA512     | SHA512 (ring backend)     |
 | SHA512/256 | SHA512/256 | SHA512/256 (ring backend) |
-|            |            | XXH32                     |
-|            |            | XXH64                     |
-|            |            | XXH3_64                   |
+|            |            | XXHASH32                  |
+|            |            | XXHASH64                  |
+|            |            | XXHASH3_64                |
 
 ### Calculate
 
