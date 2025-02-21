@@ -1,6 +1,6 @@
 [package]
 name = "ezcheck"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 description = "An easy-to-use, lightweight, cross-platform, and high-performance tool for calculating, comparing, and verifying hash of strings and files."
 repository = "https://github.com/Metaphorme/ezcheck"
@@ -8,7 +8,7 @@ documentation = "https://docs.rs/ezcheck"
 readme = "README.md"
 authors = ["Heqi Liu 77@diazepam.cc"]
 license = "MIT"
-rust-version = "1.74.1"
+rust-version = "1.81.0"
 
 [dependencies]
 md2 = { version = "0.10", optional = true }
