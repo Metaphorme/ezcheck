@@ -256,11 +256,10 @@ pub fn hash_calculator<R: BufRead>(
         }
 
         match algorithm {
-            SupportedAlgorithm::XXHASH32 => return Ok(format!("0x{:0>8x}", hasher.finish())),
-            SupportedAlgorithm::XXHASH64 | SupportedAlgorithm::XXHASH3_64 => {
-                return Ok(format!("0x{:0>16x}", hasher.finish()))
-            }
-            _ => Ok(format!("0x{:0>32x}", 0)), // Unreachable, wait for xxhash3_128.
+            SupportedAlgorithm::XXHASH32 => return Ok(format!("{:0>8x}", hasher.finish())),
+            SupportedAlgorithm::XXHASH64 => return Ok(format!("{:0>16x}", hasher.finish())),
+            SupportedAlgorithm::XXHASH3_64 => return Ok(format!("XXH3_{:0>16x}", hasher.finish())),
+            _ => Ok(format!("{:0>32x}", 0)), // Unreachable, wait for xxhash3_128.
         }
     } else {
         // hashes backend
@@ -303,7 +302,7 @@ mod test_calculator {
         let reader = BufReader::new(&TEST_WORD[..]);
         assert_eq!(
             hash_calculator(reader, SupportedAlgorithm::XXHASH32).unwrap(),
-            "0x0163d3a2"
+            "0163d3a2"
         );
     }
 
@@ -313,7 +312,7 @@ mod test_calculator {
         let reader = BufReader::new(&TEST_WORD[..]);
         assert_eq!(
             hash_calculator(reader, SupportedAlgorithm::XXHASH64).unwrap(),
-            "0x4a34911ba20e6c30"
+            "4a34911ba20e6c30"
         );
     }
 
@@ -323,7 +322,7 @@ mod test_calculator {
         let reader = BufReader::new(&TEST_WORD[..]);
         assert_eq!(
             hash_calculator(reader, SupportedAlgorithm::XXHASH3_64).unwrap(),
-            "0x802c0db623389036"
+            "XXH3_802c0db623389036"
         );
     }
 

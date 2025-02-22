@@ -55,11 +55,9 @@ pub fn detect_hash_algorithm<S: AsRef<str>>(hash: S) -> Result<Vec<SupportedAlgo
         ]),
         96 => Ok(vec![SupportedAlgorithm::SHA384]),
         128 => Ok(vec![SupportedAlgorithm::SHA512]),
-        10 => Ok(vec![SupportedAlgorithm::XXHASH32]),
-        18 => Ok(vec![
-            SupportedAlgorithm::XXHASH64,
-            SupportedAlgorithm::XXHASH3_64,
-        ]),
+        8 => Ok(vec![SupportedAlgorithm::XXHASH32]),
+        16 => Ok(vec![SupportedAlgorithm::XXHASH64]),
+        21 => Ok(vec![SupportedAlgorithm::XXHASH3_64]),
         32 => Ok(vec![
             SupportedAlgorithm::MD5,
             SupportedAlgorithm::MD4,
