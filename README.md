@@ -112,17 +112,17 @@ $ #  ezcheck calculate|c [ALGORITHM (Default SHA256)] (-f file(s)/"-" for standa
 $
 $ # Examples:
 $ ezcheck c sha256 -f image.jpg
-4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f  image.jpg
+b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2  image.jpg
 $
 $ cat image.jpg | ezcheck calculate sha256 -f -
-4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f  -
+b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2  -
 $
 $ ezcheck calculate sha256 -t "Hello"
 SHA256:  185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
 $
 $ ezcheck calculate -f image.jpg
 No algorithm specified. Using SHA256 as the default.
-4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f  image.jpg
+b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2  image.jpg
 $
 $ # We could also redirect the output into a file, just like shasum does.
 $ ezcheck calculate sha256 -f image.jpg > sha256sum.txt
@@ -137,19 +137,19 @@ $ # Usage:
 $ #  ezcheck compare|m [ALGORITHM (Leave blank to automatically detect algorithm)] (-f file/"-" for standard input | -t text) -c hash
 $  
 $ # Examples:
-$ ezcheck m sha256 -f image.jpg -c 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f
+$ ezcheck m sha256 -f image.jpg -c b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2
 SHA256 OK
 $
-$ cat image.jpg | ezcheck compare sha256 -f - -c 4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f                           
+$ cat image.jpg | ezcheck compare sha256 -f - -c b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2                           
 SHA256 OK
 $
 $ ezcheck compare sha256 -t "Hello" -c 085f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
 SHA256 FAILED  Current Hash:  185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
 $
 $ # Auto detect hash algorithm
-$ ezcheck compare -f image.jpg -c bebc102992450c68e5543383889e27c9
+$ ezcheck compare -f image.jpg -c b68c5da64847c4d8fd046ea6d6b4739f
 INFO: Hash Algorithm could be MD5, MD4, MD2
-MD5 FAILED  Current Hash:  cb74bb502cc0949aad5cd838f91f0623
+MD5 FAILED  Current Hash:  c8d0b68ed0abd920f9388973aa5a926e
 MD4 OK
 ```
 
@@ -162,7 +162,7 @@ and [ezcheck](https://github.com/Metaphorme/ezcheck). It looks like:
 
 ```
 00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95  滕王阁序.txt
-4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f *image.jpg
+b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2 *image.jpg
 ```
 
 ```bash
@@ -176,20 +176,20 @@ $ ezcheck k sha256 -c sha256sum.txt
 image.jpg: SHA256 OK
 $
 $ # Auto detect hash algorithm
-$ cat sha256sum.txt
+$ cat md4sum.txt
 9ec44ac67ab1e1c98fe0406478d5297d  滕王阁序.txt
-bebc102992450c68e5543383889e27c9  image.jpg
-$ ezcheck check -c sha256sum.txt 
+b68c5da64847c4d8fd046ea6d6b4739f  image.jpg
+$ ezcheck check -c md4sum.txt
 滕王阁序.txt: MD5 FAILED  Current Hash:  07c4e6a2c2db5f2d3a8998a3dba84a96
 滕王阁序.txt: MD4 OK
-image.jpg: MD5 FAILED  Current Hash:  cb74bb502cc0949aad5cd838f91f0623
+image.jpg: MD5 FAILED  Current Hash:  c8d0b68ed0abd920f9388973aa5a926e
 image.jpg: MD4 OK
 $
 $ # Actually, ezcheck supports various algorithm in the same check file in auto detect.
 $ # 🤔 But why this happens?
 $ cat sha256sum.txt
 00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95  滕王阁序.txt
-4c03795a6bca220a68eae7c4f136d6247d58671e074bccd58a3b9989da55f56f *image.jpg
+b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2 *image.jpg
 9ec44ac67ab1e1c98fe0406478d5297d  滕王阁序.txt
 $
 $ ezcheck check -c sha256sum.txt
