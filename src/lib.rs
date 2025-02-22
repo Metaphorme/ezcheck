@@ -168,7 +168,7 @@ pub fn match_algorithm<S: AsRef<str>>(
         }
         "xxhash32" | "xxh32" => Ok(calculator::SupportedAlgorithm::XXHASH32),
         "xxhash64" | "xxh64" => Ok(calculator::SupportedAlgorithm::XXHASH64),
-        "xxh3_64" | "xxh3-64" | "xxh3/64" | "xxhash3_64" | "xxhash3-64" | "xxhash3/64" => {
+        "xxh3" | "xxh3_64" | "xxh3-64" | "xxh3/64" | "xxhash3_64" | "xxhash3-64" | "xxhash3/64" => {
             Ok(calculator::SupportedAlgorithm::XXHASH3_64)
         }
         _ => Err(format!("Error: Unsupported algorithm: {}", algorithm)),
