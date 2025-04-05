@@ -6,6 +6,7 @@ on:
 
 jobs:
   repo-sync:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: Yikun/hub-mirror-action@master
