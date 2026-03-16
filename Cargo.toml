@@ -18,7 +18,7 @@ sha1 = { version = "0.10", optional = true }
 sha2 = { version = "0.10", optional = true }
 digest = { version = "0.10", optional = true }
 ring = { version = "0.17", optional = true }
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.6", features = ["derive"] }
 twox-hash = { version = "2.1.2", features = ["std"] }
 
 [features]
