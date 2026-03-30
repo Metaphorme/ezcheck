@@ -14,7 +14,7 @@ rust-version = "1.81.0"
 md2 = { version = "0.10", optional = true }
 md4 = { version = "0.10", optional = true }
 md-5 = { version = "0.10", optional = true }
-sha1 = { version = "0.10", optional = true }
+sha1 = { version = "0.11", optional = true }
 sha2 = { version = "0.10", optional = true }
 digest = { version = "0.10", optional = true }
 ring = { version = "0.17", optional = true }
