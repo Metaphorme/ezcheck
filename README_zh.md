@@ -10,12 +10,12 @@
 ezcheck（或 easy check）是一个轻量、高性能、跨平台、易于使用的用于计算、对比和验证字符串或文件哈希值的工具，用于防止内容篡改和确保文件的完整性。
 
 ezcheck 有三个后端：[ring](https://docs.rs/ring)，[hashes](https://docs.rs/hashes)
-和混合后端（mix backend，同时使用[ring](https://docs.rs/ring)，[hashes](https://docs.rs/hashes)），并且您只能选择其中一个。这些后端的主要差异在于：
+和混合后端（mix backend，同时使用 [ring](https://docs.rs/ring)，[hashes](https://docs.rs/hashes)），并且您只能选择其中一个。这些后端的主要差异在于：
 
 | 特点    | ring                               | hashes                                                          | mix（混合后端，推荐使用）                                                                                  |
 |-------|------------------------------------|-----------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
 | 速度    | 非常快。                               | 大约比 ring 慢五倍。                                                   | 使用支持此算法的最快后端。                                                                                   | 
-| 支持的算法 | SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256, XXHASH32, XXHASH64, XXHASH3_64 |
+| 支持的算法 | SHA256, SHA384, SHA512, SHA512/256, XXHASH32, XXHASH64, XXHASH3_64 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256, XXHASH32, XXHASH64, XXHASH3_64 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256, XXHASH32, XXHASH64, XXHASH3_64 |
 | 实现语言  | Assembly, Rust, C 等。               | Rust                                                            | Assembly, Rust, C 等。                                                                            |
 | 兼容性   | 可能无法在一些系统和架构上工作。                   | 和 Rust 兼容性一致。                                                   | 与 ring 相同。                                                                                      |
 
@@ -95,9 +95,9 @@ $ cargo test --no-default-features --features hashes_backend  # hashes backend
 | SHA384     | SHA384     | SHA384 (ring 后端)     |
 | SHA512     | SHA512     | SHA512 (ring 后端)     |
 | SHA512/256 | SHA512/256 | SHA512/256 (ring 后端) |
-|            |            | XXHASH32             |
-|            |            | XXHASH64             |
-|            |            | XXHASH3_64           |
+| XXHASH32   | XXHASH32   | XXHASH32               |
+| XXHASH64   | XXHASH64   | XXHASH64               |
+| XXHASH3_64 | XXHASH3_64 | XXHASH3_64             |
 
 ### 计算
 
@@ -115,7 +115,7 @@ $ cat image.jpg | ezcheck calculate sha256 -f -
 b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2  -
 $
 $ ezcheck calculate sha256 -t "Hello"
-SHA256:  185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
+185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
 $
 $ ezcheck calculate -f image.jpg
 No algorithm specified. Using SHA256 as the default.
@@ -129,11 +129,16 @@ $ ezcheck calculate sha256 -f image.jpg > sha256sum.txt
 
 与给定的哈希比较。
 
+`-c/--check-hash` 也支持 `算法名:hash` 这种格式。算法名会沿用命令行已有的大小写不敏感和别名支持，例如 `SHA256:...`、`sha512/256:...`。
+
 ```bash
 $ # 用法：
 $ #  ezcheck compare|m [算法 (留空则自动检测算法)] (-f 文件/"-"则从标准输入读取 | -t 文本) -c 需要对比的哈希
 $  
 $ # 例子：
+$ ezcheck compare -t "Hello" -c sha256:185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
+SHA256 OK
+$
 $ ezcheck m sha256 -f image.jpg -c b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2
 SHA256 OK
 $
@@ -141,12 +146,12 @@ $ cat image.jpg | ezcheck compare sha256 -f - -c b4c5e1d0a1f84a07ef6f329d3dcec62
 SHA256 OK
 $
 $ ezcheck compare sha256 -t "Hello" -c 085f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
-SHA256 FAILED  Current Hash:  185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
+SHA256 FAILED  Current Hash:185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
 $
 $ # 自动检测算法
 $ ezcheck compare -f image.jpg -c b68c5da64847c4d8fd046ea6d6b4739f
 INFO: Hash Algorithm could be MD5, MD4, MD2
-MD5 FAILED  Current Hash:  c8d0b68ed0abd920f9388973aa5a926e
+MD5 FAILED  Current Hash:c8d0b68ed0abd920f9388973aa5a926e
 MD4 OK
 ```
 
@@ -155,18 +160,19 @@ MD4 OK
 与给定的 shasum 样式的验证文件对比。
 
 shasum 样式的验证文件可以由 [shasum](https://linux.die.net/man/1/shasum)
-或 [ezcheck](https://github.com/Metaphorme/ezcheck) 生成，它的形式是这样的：
+或 [ezcheck](https://github.com/Metaphorme/ezcheck) 生成，哈希列也可以写成
+`算法名:hash`。它的形式是这样的：
 
 ```
 00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95  滕王阁序.txt
-b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2 *image.jpg
+sha256:b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2 *image.jpg
 ```
 
 ```bash
 $ # 用法：
 $ #  ezcheck check|k [算法 (留空则自动检测算法)] -c 验证文件
 $
-$ # 警告：验证文件应当与需要检查的文件在同一目录。
+$ # 验证文件中的相对路径会以该验证文件所在目录为基准解析。
 $ # 例子：
 $ ezcheck k sha256 -c sha256sum.txt 
 滕王阁序.txt: SHA256 OK
@@ -177,9 +183,9 @@ $ cat md4sum.txt
 9ec44ac67ab1e1c98fe0406478d5297d  滕王阁序.txt
 b68c5da64847c4d8fd046ea6d6b4739f  image.jpg
 $ ezcheck check -c md4sum.txt
-滕王阁序.txt: MD5 FAILED  Current Hash:  07c4e6a2c2db5f2d3a8998a3dba84a96
+滕王阁序.txt: MD5 FAILED  Current Hash:07c4e6a2c2db5f2d3a8998a3dba84a96
 滕王阁序.txt: MD4 OK
-image.jpg: MD5 FAILED  Current Hash:  c8d0b68ed0abd920f9388973aa5a926e
+image.jpg: MD5 FAILED  Current Hash:c8d0b68ed0abd920f9388973aa5a926e
 image.jpg: MD4 OK
 $
 $ # 实际上，ezcheck 的自动检测模式支持在同一验证文件中使用不同的算法。
@@ -192,7 +198,7 @@ $
 $ ezcheck check -c sha256sum.txt
 滕王阁序.txt: SHA256 OK
 image.jpg: SHA256 OK
-滕王阁序.txt: MD5 FAILED  Current Hash:  07c4e6a2c2db5f2d3a8998a3dba84a96
+滕王阁序.txt: MD5 FAILED  Current Hash:07c4e6a2c2db5f2d3a8998a3dba84a96
 滕王阁序.txt: MD4 OK
 ```
 
@@ -203,6 +209,8 @@ image.jpg: SHA256 OK
 #### 实验方法
 
 * 设备：MacBook Air M1 8GB
+
+* 版本：ezcheck 0.1.2
 
 * 步骤
 
@@ -265,11 +273,13 @@ image.jpg: SHA256 OK
 | SHA384              | 	1.12	 | 0.473    | 	1.13    |                   
 | SHA512	             | 1.13	  | 0.473    | 	1.13    |                   
 | SHA512/256          | 	1.13	 | 0.473    | 	1.13    |               
-| XXHASH32	           | null*	 | null*	   | 2.45     |               
-| XXHASH64	           | null*	 | null*	   | 3.27     |               
-| XXHASH3_64	         | null*  | 	null*   | 	3.65    |    
+| XXHASH32	           | N/A**  | N/A**    | 2.45     |               
+| XXHASH64	           | N/A**  | N/A**    | 3.27     |               
+| XXHASH3_64	         | N/A**  | N/A**    | 3.65     |    
 
-_null*: 此实现并未实现此算法。_
+* _null*: 此实现并未实现此算法。_
+
+* _N/A**: 当前三个后端都支持 XXHASH；这张历史基准表只记录了 mix 后端的 XXHASH 测量结果。_
 
 ![benchmark](./benchmark-algorithms-implementations.png)
 

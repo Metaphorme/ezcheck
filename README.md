@@ -17,7 +17,7 @@ one of them. The main differences between them are:
 | Features             | ring                                                       | hashes                                                          | mix(Recommended)                                                                                |
 |----------------------|------------------------------------------------------------|-----------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
 | Speed                | Fast.                                                      | About 5 times slower than ring.                                 | Use the fastest backend that supports the algorithm.                                            | 
-| Supported algorithms | SHA256, SHA384, SHA512, SHA512/256                         | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256, XXHASH32, XXHASH64, XXHASH3_64 |
+| Supported algorithms | SHA256, SHA384, SHA512, SHA512/256, XXHASH32, XXHASH64, XXHASH3_64 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256, XXHASH32, XXHASH64, XXHASH3_64 | MD2, MD4, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, SHA512/256, XXHASH32, XXHASH64, XXHASH3_64 |
 | Implement languages  | Assembly, Rust, C and etc..                                | Rust                                                            | Assembly, Rust, C and etc..                                                                     |
 | Compatibility        | May not work on every machine with different architecture. | Works well with Rust.                                           | Same to ring.                                                                                   |
 
@@ -98,9 +98,9 @@ Supported hash algorithms of different backends:
 | SHA384     | SHA384     | SHA384 (ring backend)     |
 | SHA512     | SHA512     | SHA512 (ring backend)     |
 | SHA512/256 | SHA512/256 | SHA512/256 (ring backend) |
-|            |            | XXHASH32                  |
-|            |            | XXHASH64                  |
-|            |            | XXHASH3_64                |
+| XXHASH32   | XXHASH32   | XXHASH32                  |
+| XXHASH64   | XXHASH64   | XXHASH64                  |
+| XXHASH3_64 | XXHASH3_64 | XXHASH3_64                |
 
 ### Calculate
 
@@ -118,7 +118,7 @@ $ cat image.jpg | ezcheck calculate sha256 -f -
 b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2  -
 $
 $ ezcheck calculate sha256 -t "Hello"
-SHA256:  185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
+185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
 $
 $ ezcheck calculate -f image.jpg
 No algorithm specified. Using SHA256 as the default.
@@ -132,11 +132,17 @@ $ ezcheck calculate sha256 -f image.jpg > sha256sum.txt
 
 Compare with given hash.
 
+The `-c/--check-hash` value also accepts `algorithm:hash`. Algorithm names keep the same
+case-insensitive alias support as the CLI, such as `SHA256:...` or `sha512/256:...`.
+
 ```bash
 $ # Usage:
 $ #  ezcheck compare|m [ALGORITHM (Leave blank to automatically detect algorithm)] (-f file/"-" for standard input | -t text) -c hash
 $  
 $ # Examples:
+$ ezcheck compare -t "Hello" -c sha256:185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
+SHA256 OK
+$
 $ ezcheck m sha256 -f image.jpg -c b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2
 SHA256 OK
 $
@@ -144,12 +150,12 @@ $ cat image.jpg | ezcheck compare sha256 -f - -c b4c5e1d0a1f84a07ef6f329d3dcec62
 SHA256 OK
 $
 $ ezcheck compare sha256 -t "Hello" -c 085f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
-SHA256 FAILED  Current Hash:  185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
+SHA256 FAILED  Current Hash:185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969
 $
 $ # Auto detect hash algorithm
 $ ezcheck compare -f image.jpg -c b68c5da64847c4d8fd046ea6d6b4739f
 INFO: Hash Algorithm could be MD5, MD4, MD2
-MD5 FAILED  Current Hash:  c8d0b68ed0abd920f9388973aa5a926e
+MD5 FAILED  Current Hash:c8d0b68ed0abd920f9388973aa5a926e
 MD4 OK
 ```
 
@@ -158,18 +164,19 @@ MD4 OK
 Check with given shasum-style check file.
 
 shasum-style check file could be generated from [shasum](https://linux.die.net/man/1/shasum)
-and [ezcheck](https://github.com/Metaphorme/ezcheck). It looks like:
+and [ezcheck](https://github.com/Metaphorme/ezcheck). The hash column can also use
+`algorithm:hash`. It looks like:
 
 ```
 00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95  滕王阁序.txt
-b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2 *image.jpg
+sha256:b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2 *image.jpg
 ```
 
 ```bash
 $ # Usage:
 $ #  ezcheck check|k [ALGORITHM (Leave blank to automatically detect algorithm)] -c check-file
 $
-$ # Warning: The shasum file (or check file) should be in the same directory with files to be checked.
+$ # Relative paths inside the check file are resolved from the check file's directory.
 $ # Example:
 $ ezcheck k sha256 -c sha256sum.txt 
 滕王阁序.txt: SHA256 OK
@@ -180,9 +187,9 @@ $ cat md4sum.txt
 9ec44ac67ab1e1c98fe0406478d5297d  滕王阁序.txt
 b68c5da64847c4d8fd046ea6d6b4739f  image.jpg
 $ ezcheck check -c md4sum.txt
-滕王阁序.txt: MD5 FAILED  Current Hash:  07c4e6a2c2db5f2d3a8998a3dba84a96
+滕王阁序.txt: MD5 FAILED  Current Hash:07c4e6a2c2db5f2d3a8998a3dba84a96
 滕王阁序.txt: MD4 OK
-image.jpg: MD5 FAILED  Current Hash:  c8d0b68ed0abd920f9388973aa5a926e
+image.jpg: MD5 FAILED  Current Hash:c8d0b68ed0abd920f9388973aa5a926e
 image.jpg: MD4 OK
 $
 $ # Actually, ezcheck supports various algorithm in the same check file in auto detect.
@@ -195,7 +202,7 @@ $
 $ ezcheck check -c sha256sum.txt
 滕王阁序.txt: SHA256 OK
 image.jpg: SHA256 OK
-滕王阁序.txt: MD5 FAILED  Current Hash:  07c4e6a2c2db5f2d3a8998a3dba84a96
+滕王阁序.txt: MD5 FAILED  Current Hash:07c4e6a2c2db5f2d3a8998a3dba84a96
 滕王阁序.txt: MD4 OK
 ```
 
@@ -241,6 +248,8 @@ image.jpg: SHA256 OK
 
 * Device: MacBook Air M1 8GB
 
+* Version: ezcheck 0.1.2
+
 * Steps
 
     1. Run:
@@ -268,11 +277,13 @@ image.jpg: SHA256 OK
 | SHA384                                      | 	1.12	 | 0.473    | 	1.13    |                   
 | SHA512	                                     | 1.13	  | 0.473    | 	1.13    |                   
 | SHA512/256                                  | 	1.13	 | 0.473    | 	1.13    |               
-| XXHASH32	                                   | null*	 | null*	   | 2.45     |               
-| XXHASH64	                                   | null*	 | null*	   | 3.27     |               
-| XXHASH3_64	                                 | null*  | 	null*   | 	3.65    |    
+| XXHASH32	                                   | N/A**  | N/A**    | 2.45     |               
+| XXHASH64	                                   | N/A**  | N/A**    | 3.27     |               
+| XXHASH3_64	                                 | N/A**  | N/A**    | 3.65     |    
 
-_null*: The algorithm is not implemented in this implementation._
+* _null*: The algorithm is not implemented in this implementation._
+
+* _N/A**: XXHASH is supported by all current backends; this historical benchmark table only recorded the mix-backend measurements for XXHASH._
 
 ![benchmark](./benchmark-algorithms-implementations.png)
 

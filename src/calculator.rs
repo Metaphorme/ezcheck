@@ -19,18 +19,14 @@ compile_error!(
 );
 
 use crate::extra::bytes_to_hex;
+use core::hash::Hasher;
 use std::fmt;
 use std::io::{BufRead, Error};
 
 #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
 use digest::DynDigest;
-
 #[cfg(any(feature = "ring_backend", feature = "mix_backend"))]
-use ring::digest::{Context, SHA256, SHA384, SHA512, SHA512_256};
-
-#[cfg(any(feature = "mix_backend"))]
-use core::hash::Hasher;
-#[cfg(any(feature = "mix_backend"))]
+use ring::digest::{Algorithm, Context, SHA256, SHA384, SHA512, SHA512_256};
 use twox_hash::{XxHash32, XxHash3_64, XxHash64};
 
 /*
@@ -42,13 +38,17 @@ use twox_hash::{XxHash32, XxHash3_64, XxHash64};
 #[allow(dead_code)]
 pub const BUFFER_SIZE: usize = 8192;
 
-#[cfg(any(feature = "mix_backend"))]
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SupportedAlgorithm {
+    #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
     MD2,
+    #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
     MD4,
+    #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
     MD5,
+    #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
     SHA1,
+    #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
     SHA224,
     SHA256,
     SHA384,
@@ -59,14 +59,54 @@ pub enum SupportedAlgorithm {
     XXHASH3_64,
 }
 
-#[cfg(any(feature = "mix_backend"))]
-impl fmt::Display for SupportedAlgorithm {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let algorithm = match self {
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum AlgorithmBackend {
+    #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+    Digest,
+    #[cfg(any(feature = "ring_backend", feature = "mix_backend"))]
+    Ring,
+    Xxhash,
+}
+
+impl SupportedAlgorithm {
+    pub fn from_input<S: AsRef<str>>(algorithm: S) -> Result<Self, String> {
+        let algorithm = algorithm.as_ref().trim();
+        let normalized = algorithm.to_ascii_lowercase();
+
+        match normalized.as_str() {
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+            "md2" => Ok(Self::MD2),
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+            "md4" => Ok(Self::MD4),
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+            "md5" => Ok(Self::MD5),
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+            "sha1" => Ok(Self::SHA1),
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+            "sha224" => Ok(Self::SHA224),
+            "sha256" => Ok(Self::SHA256),
+            "sha384" => Ok(Self::SHA384),
+            "sha512" => Ok(Self::SHA512),
+            "sha512_256" | "sha512-256" | "sha512/256" => Ok(Self::SHA512_256),
+            "xxhash32" | "xxh32" => Ok(Self::XXHASH32),
+            "xxhash64" | "xxh64" => Ok(Self::XXHASH64),
+            "xxh3" | "xxh3_64" | "xxh3-64" | "xxh3/64" | "xxhash3" | "xxhash3_64"
+            | "xxhash3-64" | "xxhash3/64" => Ok(Self::XXHASH3_64),
+            _ => Err(format!("Error: Unsupported algorithm: {}", algorithm)),
+        }
+    }
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
             SupportedAlgorithm::MD2 => "MD2",
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
             SupportedAlgorithm::MD4 => "MD4",
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
             SupportedAlgorithm::MD5 => "MD5",
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
             SupportedAlgorithm::SHA1 => "SHA1",
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
             SupportedAlgorithm::SHA224 => "SHA224",
             SupportedAlgorithm::SHA256 => "SHA256",
             SupportedAlgorithm::SHA384 => "SHA384",
@@ -75,46 +115,81 @@ impl fmt::Display for SupportedAlgorithm {
             SupportedAlgorithm::XXHASH32 => "XXHASH32",
             SupportedAlgorithm::XXHASH64 => "XXHASH64",
             SupportedAlgorithm::XXHASH3_64 => "XXHASH3_64",
-        };
-        write!(f, "{}", algorithm)
+        }
+    }
+
+    pub const fn prefixed_hash_name(self) -> &'static str {
+        match self {
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+            SupportedAlgorithm::MD2 => "md2",
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+            SupportedAlgorithm::MD4 => "md4",
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+            SupportedAlgorithm::MD5 => "md5",
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+            SupportedAlgorithm::SHA1 => "sha1",
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+            SupportedAlgorithm::SHA224 => "sha224",
+            SupportedAlgorithm::SHA256 => "sha256",
+            SupportedAlgorithm::SHA384 => "sha384",
+            SupportedAlgorithm::SHA512 => "sha512",
+            SupportedAlgorithm::SHA512_256 => "sha512/256",
+            SupportedAlgorithm::XXHASH32 => "xxhash32",
+            SupportedAlgorithm::XXHASH64 => "xxhash64",
+            SupportedAlgorithm::XXHASH3_64 => "xxh3_64",
+        }
+    }
+
+    const fn backend(self) -> AlgorithmBackend {
+        match self {
+            SupportedAlgorithm::XXHASH32
+            | SupportedAlgorithm::XXHASH64
+            | SupportedAlgorithm::XXHASH3_64 => AlgorithmBackend::Xxhash,
+            #[cfg(any(feature = "ring_backend", feature = "mix_backend"))]
+            SupportedAlgorithm::SHA256
+            | SupportedAlgorithm::SHA384
+            | SupportedAlgorithm::SHA512
+            | SupportedAlgorithm::SHA512_256 => AlgorithmBackend::Ring,
+            #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+            SupportedAlgorithm::MD2
+            | SupportedAlgorithm::MD4
+            | SupportedAlgorithm::MD5
+            | SupportedAlgorithm::SHA1
+            | SupportedAlgorithm::SHA224 => AlgorithmBackend::Digest,
+            #[cfg(feature = "hashes_backend")]
+            SupportedAlgorithm::SHA256
+            | SupportedAlgorithm::SHA384
+            | SupportedAlgorithm::SHA512
+            | SupportedAlgorithm::SHA512_256 => AlgorithmBackend::Digest,
+        }
     }
 }
 
-#[cfg(any(feature = "hashes_backend"))]
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum SupportedAlgorithm {
-    MD2,
-    MD4,
-    MD5,
-    SHA1,
-    SHA224,
-    SHA256,
-    SHA384,
-    SHA512,
-    SHA512_256,
-}
-
-#[cfg(any(feature = "hashes_backend"))]
 impl fmt::Display for SupportedAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let algorithm = match self {
-            SupportedAlgorithm::MD2 => "MD2",
-            SupportedAlgorithm::MD4 => "MD4",
-            SupportedAlgorithm::MD5 => "MD5",
-            SupportedAlgorithm::SHA1 => "SHA1",
-            SupportedAlgorithm::SHA224 => "SHA224",
-            SupportedAlgorithm::SHA256 => "SHA256",
-            SupportedAlgorithm::SHA384 => "SHA384",
-            SupportedAlgorithm::SHA512 => "SHA512",
-            SupportedAlgorithm::SHA512_256 => "SHA512_256",
-        };
-        write!(f, "{}", algorithm)
+        write!(f, "{}", self.as_str())
     }
 }
 
-#[cfg(feature = "hashes_backend")]
-pub fn hash_calculator<R: BufRead>(
-    mut reader: R,
+fn consume_reader<R: BufRead, F>(reader: &mut R, mut update: F) -> Result<(), Error>
+where
+    F: FnMut(&[u8]),
+{
+    let mut buffer = [0u8; BUFFER_SIZE];
+
+    loop {
+        let read_bytes = reader.read(&mut buffer)?;
+        if read_bytes == 0 {
+            return Ok(());
+        }
+
+        update(&buffer[..read_bytes]);
+    }
+}
+
+#[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+fn hash_with_digest<R: BufRead>(
+    reader: &mut R,
     algorithm: SupportedAlgorithm,
 ) -> Result<String, Error> {
     let mut hasher: Box<dyn DynDigest> = match algorithm {
@@ -123,168 +198,78 @@ pub fn hash_calculator<R: BufRead>(
         SupportedAlgorithm::MD5 => Box::new(md5::Md5::default()),
         SupportedAlgorithm::SHA1 => Box::new(sha1::Sha1::default()),
         SupportedAlgorithm::SHA224 => Box::new(sha2::Sha224::default()),
+        #[cfg(feature = "hashes_backend")]
         SupportedAlgorithm::SHA256 => Box::new(sha2::Sha256::default()),
+        #[cfg(feature = "hashes_backend")]
         SupportedAlgorithm::SHA384 => Box::new(sha2::Sha384::default()),
+        #[cfg(feature = "hashes_backend")]
         SupportedAlgorithm::SHA512 => Box::new(sha2::Sha512::default()),
+        #[cfg(feature = "hashes_backend")]
         SupportedAlgorithm::SHA512_256 => Box::new(sha2::Sha512_256::default()),
+        _ => unreachable!("non-digest algorithms are handled separately"),
     };
 
-    let mut buffer = [0u8; BUFFER_SIZE];
-    loop {
-        match reader.read(&mut buffer) {
-            Ok(read_bytes) => {
-                if read_bytes == 0 {
-                    break; // Finish reading the file
-                }
-                hasher.update(&buffer[..read_bytes]);
-            }
-            Err(e) => {
-                return Err(e);
-            }
-        }
-    }
+    consume_reader(reader, |chunk| hasher.update(chunk))?;
 
-    Ok(bytes_to_hex(&*hasher.finalize_reset()))
+    let digest = hasher.finalize_reset();
+    Ok(bytes_to_hex(digest.as_ref()))
 }
 
-#[cfg(feature = "ring_backend")]
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum SupportedAlgorithm {
-    SHA256,
-    SHA384,
-    SHA512,
-    SHA512_256,
-}
-
-#[cfg(feature = "ring_backend")]
-impl fmt::Display for SupportedAlgorithm {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let algorithm = match self {
-            SupportedAlgorithm::SHA256 => "SHA256",
-            SupportedAlgorithm::SHA384 => "SHA384",
-            SupportedAlgorithm::SHA512 => "SHA512",
-            SupportedAlgorithm::SHA512_256 => "SHA512_256",
-        };
-        write!(f, "{}", algorithm)
+#[cfg(any(feature = "ring_backend", feature = "mix_backend"))]
+fn ring_algorithm(algorithm: SupportedAlgorithm) -> &'static Algorithm {
+    match algorithm {
+        SupportedAlgorithm::SHA256 => &SHA256,
+        SupportedAlgorithm::SHA384 => &SHA384,
+        SupportedAlgorithm::SHA512 => &SHA512,
+        SupportedAlgorithm::SHA512_256 => &SHA512_256,
+        _ => unreachable!("non-ring algorithms are handled separately"),
     }
 }
 
-#[cfg(feature = "ring_backend")]
+#[cfg(any(feature = "ring_backend", feature = "mix_backend"))]
+fn hash_with_ring<R: BufRead>(
+    reader: &mut R,
+    algorithm: SupportedAlgorithm,
+) -> Result<String, Error> {
+    let mut hasher = Context::new(ring_algorithm(algorithm));
+    consume_reader(reader, |chunk| hasher.update(chunk))?;
+
+    let digest = hasher.finish();
+    Ok(bytes_to_hex(digest.as_ref()))
+}
+
+fn hash_with_xxhash<R: BufRead>(
+    reader: &mut R,
+    algorithm: SupportedAlgorithm,
+) -> Result<String, Error> {
+    let mut hasher: Box<dyn Hasher> = match algorithm {
+        SupportedAlgorithm::XXHASH32 => Box::new(XxHash32::with_seed(0)),
+        SupportedAlgorithm::XXHASH64 => Box::new(XxHash64::with_seed(0)),
+        SupportedAlgorithm::XXHASH3_64 => Box::new(XxHash3_64::with_seed(0)),
+        _ => unreachable!("non-xxhash algorithms are handled separately"),
+    };
+
+    consume_reader(reader, |chunk| hasher.write(chunk))?;
+
+    let hash = hasher.finish();
+    Ok(match algorithm {
+        SupportedAlgorithm::XXHASH32 => format!("{hash:08x}"),
+        SupportedAlgorithm::XXHASH64 => format!("{hash:016x}"),
+        SupportedAlgorithm::XXHASH3_64 => format!("XXH3_{hash:016x}"),
+        _ => unreachable!("non-xxhash algorithms are handled separately"),
+    })
+}
+
 pub fn hash_calculator<R: BufRead>(
     mut reader: R,
     algorithm: SupportedAlgorithm,
 ) -> Result<String, Error> {
-    let mut hasher: Context = match algorithm {
-        SupportedAlgorithm::SHA256 => Context::new(&SHA256),
-        SupportedAlgorithm::SHA384 => Context::new(&SHA384),
-        SupportedAlgorithm::SHA512 => Context::new(&SHA512),
-        SupportedAlgorithm::SHA512_256 => Context::new(&SHA512_256),
-    };
-
-    let mut buffer = [0u8; BUFFER_SIZE];
-    loop {
-        match reader.read(&mut buffer) {
-            Ok(read_bytes) => {
-                if read_bytes == 0 {
-                    break; // Finish reading the file
-                }
-                hasher.update(&buffer[..read_bytes]);
-            }
-            Err(e) => {
-                return Err(e);
-            }
-        }
-    }
-
-    Ok(bytes_to_hex(&hasher.finish().as_ref().to_vec()))
-}
-
-#[cfg(feature = "mix_backend")]
-pub fn hash_calculator<R: BufRead>(
-    mut reader: R,
-    algorithm: SupportedAlgorithm,
-) -> Result<String, Error> {
-    let mut buffer = [0u8; BUFFER_SIZE];
-    if algorithm == SupportedAlgorithm::SHA256  // ring backend
-        || algorithm == SupportedAlgorithm::SHA384
-        || algorithm == SupportedAlgorithm::SHA512
-        || algorithm == SupportedAlgorithm::SHA512_256
-    {
-        let mut hasher: Context = match algorithm {
-            SupportedAlgorithm::SHA256 => Context::new(&SHA256),
-            SupportedAlgorithm::SHA384 => Context::new(&SHA384),
-            SupportedAlgorithm::SHA512 => Context::new(&SHA512),
-            SupportedAlgorithm::SHA512_256 => Context::new(&SHA512_256),
-            _ => Context::new(&SHA256), // Can't happen!
-        };
-        loop {
-            match reader.read(&mut buffer) {
-                Ok(read_bytes) => {
-                    if read_bytes == 0 {
-                        break; // Finish reading the file
-                    }
-                    hasher.update(&buffer[..read_bytes]);
-                }
-                Err(e) => {
-                    return Err(e);
-                }
-            }
-        }
-        Ok(bytes_to_hex(&hasher.finish().as_ref().to_vec()))
-    } else if algorithm == SupportedAlgorithm::XXHASH32  // XXHASH
-        || algorithm == SupportedAlgorithm::XXHASH64
-        || algorithm == SupportedAlgorithm::XXHASH3_64
-    {
-        let mut hasher: Box<dyn Hasher> = match algorithm {
-            SupportedAlgorithm::XXHASH32 => Box::new(XxHash32::with_seed(0)),
-            SupportedAlgorithm::XXHASH64 => Box::new(XxHash64::with_seed(0)),
-            SupportedAlgorithm::XXHASH3_64 => Box::new(XxHash3_64::with_seed(0)),
-            _ => Box::new(XxHash32::with_seed(0)), // Can't happen!
-        };
-        loop {
-            match reader.read(&mut buffer) {
-                Ok(read_bytes) => {
-                    if read_bytes == 0 {
-                        break; // Finish reading the file
-                    }
-                    hasher.write(&buffer[..read_bytes]);
-                }
-                Err(e) => {
-                    return Err(e);
-                }
-            }
-        }
-
-        match algorithm {
-            SupportedAlgorithm::XXHASH32 => return Ok(format!("{:0>8x}", hasher.finish())),
-            SupportedAlgorithm::XXHASH64 => return Ok(format!("{:0>16x}", hasher.finish())),
-            SupportedAlgorithm::XXHASH3_64 => return Ok(format!("XXH3_{:0>16x}", hasher.finish())),
-            _ => Ok(format!("{:0>32x}", 0)), // Unreachable, wait for xxhash3_128.
-        }
-    } else {
-        // hashes backend
-        let mut hasher: Box<dyn DynDigest> = match algorithm {
-            SupportedAlgorithm::MD2 => Box::new(md2::Md2::default()),
-            SupportedAlgorithm::MD4 => Box::new(md4::Md4::default()),
-            SupportedAlgorithm::MD5 => Box::new(md5::Md5::default()),
-            SupportedAlgorithm::SHA1 => Box::new(sha1::Sha1::default()),
-            SupportedAlgorithm::SHA224 => Box::new(sha2::Sha224::default()),
-            _ => Box::new(md5::Md5::default()), // Can't happen!
-        };
-        loop {
-            match reader.read(&mut buffer) {
-                Ok(read_bytes) => {
-                    if read_bytes == 0 {
-                        break; // Finish reading the file
-                    }
-                    hasher.update(&buffer[..read_bytes]);
-                }
-                Err(e) => {
-                    return Err(e);
-                }
-            }
-        }
-        Ok(bytes_to_hex(&*hasher.finalize_reset()))
+    match algorithm.backend() {
+        AlgorithmBackend::Xxhash => hash_with_xxhash(&mut reader, algorithm),
+        #[cfg(any(feature = "ring_backend", feature = "mix_backend"))]
+        AlgorithmBackend::Ring => hash_with_ring(&mut reader, algorithm),
+        #[cfg(any(feature = "hashes_backend", feature = "mix_backend"))]
+        AlgorithmBackend::Digest => hash_with_digest(&mut reader, algorithm),
     }
 }
 
@@ -296,7 +281,6 @@ mod test_calculator {
 
     const TEST_WORD: &[u8; 16] = b"Veni, vidi, vici";
 
-    #[cfg(any(feature = "mix_backend"))]
     #[test]
     fn test_xxhash32() {
         let reader = BufReader::new(&TEST_WORD[..]);
@@ -306,7 +290,6 @@ mod test_calculator {
         );
     }
 
-    #[cfg(any(feature = "mix_backend"))]
     #[test]
     fn test_xxhash64() {
         let reader = BufReader::new(&TEST_WORD[..]);
@@ -316,13 +299,33 @@ mod test_calculator {
         );
     }
 
-    #[cfg(any(feature = "mix_backend"))]
     #[test]
     fn test_xxhash3_64() {
         let reader = BufReader::new(&TEST_WORD[..]);
         assert_eq!(
             hash_calculator(reader, SupportedAlgorithm::XXHASH3_64).unwrap(),
             "XXH3_802c0db623389036"
+        );
+    }
+
+    #[test]
+    fn test_supported_algorithm_from_input_accepts_case_insensitive_aliases() {
+        assert_eq!(
+            SupportedAlgorithm::from_input("sHa512/256").unwrap(),
+            SupportedAlgorithm::SHA512_256
+        );
+    }
+
+    #[test]
+    fn test_supported_algorithm_prefixed_hash_name_is_canonical() {
+        assert_eq!(SupportedAlgorithm::SHA256.prefixed_hash_name(), "sha256");
+        assert_eq!(
+            SupportedAlgorithm::SHA512_256.prefixed_hash_name(),
+            "sha512/256"
+        );
+        assert_eq!(
+            SupportedAlgorithm::XXHASH3_64.prefixed_hash_name(),
+            "xxh3_64"
         );
     }
 

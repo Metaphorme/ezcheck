@@ -20,67 +20,251 @@ compile_error!(
 
 use clap::{Parser, Subcommand};
 use ezcheck::calculator::SupportedAlgorithm;
-use ezcheck::extra;
-use ezcheck::{match_algorithm, phase_shasum_file, Calculate, Compare, Data, IfMatch};
+use ezcheck::{
+    match_algorithm, phase_shasum_file, resolve_hash_input, Calculate, Compare, Data, IfMatch,
+};
 use std::process;
 
-#[cfg(feature = "hashes_backend")]
-#[derive(Parser)]
-#[command(name = "ezcheck")]
-#[command(version = concat!(env!("CARGO_PKG_VERSION"), " (Hashes Backend)"))]
-#[command(
-    about = "An easy tool to calculate and check hash.\nMade with love by Heqi Liu, https://github.com/metaphorme"
-)]
-struct Cli {
-    #[command(subcommand)]
-    args: Args,
-}
+const CLI_ABOUT: &str =
+    "An easy tool to calculate and check hash.\nMade with love by Heqi Liu, https://github.com/metaphorme";
 
+#[cfg(feature = "hashes_backend")]
+const CLI_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (Hashes Backend)");
 #[cfg(feature = "ring_backend")]
-#[derive(Parser)]
-#[command(name = "ezcheck")]
-#[command(version = concat!(env!("CARGO_PKG_VERSION"), " (Ring Backend)"))]
-#[command(
-    about = "An easy tool to calculate and check hash.\nMade with love by Heqi Liu, https://github.com/metaphorme"
-)]
-struct Cli {
-    #[command(subcommand)]
-    args: Args,
-}
+const CLI_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (Ring Backend)");
+#[cfg(feature = "mix_backend")]
+const CLI_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (Mix Backend)");
 
 #[cfg(feature = "mix_backend")]
+const CALCULATE_HELP_TEMPLATE: &str = "Calculate hash for a file or text (alias: c)
+
+Usage: {usage}
+
+Arguments:
+  [ALGORITHM]
+    Optional algorithm to use for calculate hash.
+    Supported algorithms:
+      * MD2(Unsafe)
+      * MD4(Unsafe)
+      * MD5(Unsafe)
+      * SHA1(Unsafe)
+      * SHA224
+      * SHA256(default)
+      * SHA384
+      * SHA512
+      * SHA512_256
+      * XXHASH32
+      * XXHASH64
+      * XXHASH3_64
+
+Options:
+{options}";
+#[cfg(feature = "hashes_backend")]
+const CALCULATE_HELP_TEMPLATE: &str = "Calculate hash for a file or text (alias: c)
+
+Usage: {usage}
+
+Arguments:
+  [ALGORITHM]
+    Optional algorithm to use for calculate hash.
+    Supported algorithms:
+      * MD2(Unsafe)
+      * MD4(Unsafe)
+      * MD5(Unsafe)
+      * SHA1(Unsafe)
+      * SHA224
+      * SHA256(default)
+      * SHA384
+      * SHA512
+      * SHA512_256
+      * XXHASH32
+      * XXHASH64
+      * XXHASH3_64
+
+Options:
+{options}";
+#[cfg(feature = "ring_backend")]
+const CALCULATE_HELP_TEMPLATE: &str = "Calculate hash for a file or text (alias: c)
+
+Usage: {usage}
+
+Arguments:
+  [ALGORITHM]
+    Optional algorithm to use for calculate hash.
+    Supported algorithms:
+      * SHA256(default)
+      * SHA384
+      * SHA512
+      * SHA512_256
+      * XXHASH32
+      * XXHASH64
+      * XXHASH3_64
+
+Options:
+{options}";
+
+#[cfg(feature = "mix_backend")]
+const COMPARE_HELP_TEMPLATE: &str = "Compare with given hash (alias: m)
+
+Usage: {usage}
+
+Arguments:
+  [ALGORITHM]
+    Optional algorithm to use for calculate hash.
+    Leave blank to automatically detect the hash algorithm.
+    The value passed to -c/--check-hash may also use algorithm:hash.
+    Supported algorithms:
+      * MD2(Unsafe)
+      * MD4(Unsafe)
+      * MD5(Unsafe)
+      * SHA1(Unsafe)
+      * SHA224
+      * SHA256
+      * SHA384
+      * SHA512
+      * SHA512_256
+      * XXHASH32
+      * XXHASH64
+      * XXHASH3_64
+
+Options:
+{options}";
+#[cfg(feature = "hashes_backend")]
+const COMPARE_HELP_TEMPLATE: &str = "Compare with given hash (alias: m)
+
+Usage: {usage}
+
+Arguments:
+  [ALGORITHM]
+    Optional algorithm to use for calculate hash.
+    Leave blank to automatically detect the hash algorithm.
+    The value passed to -c/--check-hash may also use algorithm:hash.
+    Supported algorithms:
+      * MD2(Unsafe)
+      * MD4(Unsafe)
+      * MD5(Unsafe)
+      * SHA1(Unsafe)
+      * SHA224
+      * SHA256
+      * SHA384
+      * SHA512
+      * SHA512_256
+      * XXHASH32
+      * XXHASH64
+      * XXHASH3_64
+
+Options:
+{options}";
+#[cfg(feature = "ring_backend")]
+const COMPARE_HELP_TEMPLATE: &str = "Compare with given hash (alias: m)
+
+Usage: {usage}
+
+Arguments:
+  [ALGORITHM]
+    Optional algorithm to use for calculate hash.
+    Leave blank to automatically detect the hash algorithm.
+    The value passed to -c/--check-hash may also use algorithm:hash.
+    Supported algorithms:
+      * SHA256
+      * SHA384
+      * SHA512
+      * SHA512_256
+      * XXHASH32
+      * XXHASH64
+      * XXHASH3_64
+
+Options:
+{options}";
+
+#[cfg(feature = "mix_backend")]
+const CHECK_HELP_TEMPLATE: &str = "Check with given shasum file (alias: k)
+
+Usage: {usage}
+
+Arguments:
+  [ALGORITHM]
+    Optional algorithm to use for calculate hash.
+    Leave blank to automatically detect the hash algorithm.
+    The hash column in the check file may also use algorithm:hash.
+    Supported algorithms:
+      * MD2(Unsafe)
+      * MD4(Unsafe)
+      * MD5(Unsafe)
+      * SHA1(Unsafe)
+      * SHA224
+      * SHA256
+      * SHA384
+      * SHA512
+      * SHA512_256
+      * XXHASH32
+      * XXHASH64
+      * XXHASH3_64
+
+Options:
+{options}";
+#[cfg(feature = "hashes_backend")]
+const CHECK_HELP_TEMPLATE: &str = "Check with given shasum file (alias: k)
+
+Usage: {usage}
+
+Arguments:
+  [ALGORITHM]
+    Optional algorithm to use for calculate hash.
+    Leave blank to automatically detect the hash algorithm.
+    The hash column in the check file may also use algorithm:hash.
+    Supported algorithms:
+      * MD2(Unsafe)
+      * MD4(Unsafe)
+      * MD5(Unsafe)
+      * SHA1(Unsafe)
+      * SHA224
+      * SHA256
+      * SHA384
+      * SHA512
+      * SHA512_256
+      * XXHASH32
+      * XXHASH64
+      * XXHASH3_64
+
+Options:
+{options}";
+#[cfg(feature = "ring_backend")]
+const CHECK_HELP_TEMPLATE: &str = "Check with given shasum file (alias: k)
+
+Usage: {usage}
+
+Arguments:
+  [ALGORITHM]
+    Optional algorithm to use for calculate hash.
+    Leave blank to automatically detect the hash algorithm.
+    The hash column in the check file may also use algorithm:hash.
+    Supported algorithms:
+      * SHA256
+      * SHA384
+      * SHA512
+      * SHA512_256
+      * XXHASH32
+      * XXHASH64
+      * XXHASH3_64
+
+Options:
+{options}";
+
 #[derive(Parser)]
 #[command(name = "ezcheck")]
-#[command(version = concat!(env!("CARGO_PKG_VERSION"), " (Mix Backend)"))]
-#[command(
-    about = "An easy tool to calculate and check hash.\nMade with love by Heqi Liu, https://github.com/metaphorme"
-)]
+#[command(version = CLI_VERSION)]
+#[command(about = CLI_ABOUT)]
 struct Cli {
     #[command(subcommand)]
     args: Args,
 }
 
-#[cfg(any(feature = "mix_backend"))]
 #[derive(Subcommand)]
 enum Args {
     /// Calculate hash for a file or text (alias: c)
-    #[command(alias = "c")]
+    #[command(alias = "c", help_template = CALCULATE_HELP_TEMPLATE)]
     Calculate {
-        /// Optional algorithm to use for calculate hash.
-        /// Supported algorithms:
-        ///  * MD2(Unsafe)
-        ///  * MD4(Unsafe)
-        ///  * MD5(Unsafe)
-        ///  * SHA1(Unsafe)
-        ///  * SHA224
-        ///  * SHA256(default)
-        ///  * SHA384
-        ///  * SHA512
-        ///  * SHA512_256
-        ///  * XXHASH32
-        ///  * XXHASH64
-        ///  * XXHASH3_64
-        #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
         /// File(s) to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
@@ -93,24 +277,8 @@ enum Args {
     },
 
     /// Compare with given hash (alias: m)
-    #[command(alias = "m")]
+    #[command(alias = "m", help_template = COMPARE_HELP_TEMPLATE)]
     Compare {
-        /// Optional algorithm to use for calculate hash.
-        /// Leave blank to automatically detect the hash algorithm.
-        /// Supported algorithms:
-        ///  * MD2(Unsafe)
-        ///  * MD4(Unsafe)
-        ///  * MD5(Unsafe)
-        ///  * SHA1(Unsafe)
-        ///  * SHA224
-        ///  * SHA256
-        ///  * SHA384
-        ///  * SHA512
-        ///  * SHA512_256
-        ///  * XXHASH32
-        ///  * XXHASH64
-        ///  * XXHASH3_64
-        #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
         /// File to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
@@ -127,177 +295,8 @@ enum Args {
     },
 
     /// Check with given shasum file (alias: k)
-    #[command(alias = "k")]
+    #[command(alias = "k", help_template = CHECK_HELP_TEMPLATE)]
     Check {
-        /// Optional algorithm to use for calculate hash.
-        /// Leave blank to automatically detect the hash algorithm.
-        /// Supported algorithms:
-        ///  * MD2(Unsafe)
-        ///  * MD4(Unsafe)
-        ///  * MD5(Unsafe)
-        ///  * SHA1(Unsafe)
-        ///  * SHA224
-        ///  * SHA256
-        ///  * SHA384
-        ///  * SHA512
-        ///  * SHA512_256
-        ///  * XXHASH32
-        ///  * XXHASH64
-        ///  * XXHASH3_64
-        #[arg(verbatim_doc_comment)]
-        algorithm: Option<String>,
-
-        /// shasum file to check with.
-        #[arg(short, long)]
-        check_file: Option<String>,
-    },
-}
-
-#[cfg(any(feature = "hashes_backend"))]
-#[derive(Subcommand)]
-enum Args {
-    /// Calculate hash for a file or text (alias: c)
-    #[command(alias = "c")]
-    Calculate {
-        /// Optional algorithm to use for calculate hash.
-        /// Supported algorithms:
-        ///  * MD2(Unsafe)
-        ///  * MD4(Unsafe)
-        ///  * MD5(Unsafe)
-        ///  * SHA1(Unsafe)
-        ///  * SHA224
-        ///  * SHA256(default)
-        ///  * SHA384
-        ///  * SHA512
-        ///  * SHA512_256
-        #[arg(verbatim_doc_comment)]
-        algorithm: Option<String>,
-
-        /// File(s) to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
-        #[arg(short, long, num_args = 1..)]
-        file: Option<Vec<String>>,
-
-        /// Direct text input for hash calculation.
-        #[arg(short, long)]
-        text: Option<String>,
-    },
-
-    /// Compare with given hash (alias: m)
-    #[command(alias = "m")]
-    Compare {
-        /// Optional algorithm to use for calculate hash.
-        /// Leave blank to automatically detect the hash algorithm.
-        /// Supported algorithms:
-        ///  * MD2(Unsafe)
-        ///  * MD4(Unsafe)
-        ///  * MD5(Unsafe)
-        ///  * SHA1(Unsafe)
-        ///  * SHA224
-        ///  * SHA256
-        ///  * SHA384
-        ///  * SHA512
-        ///  * SHA512_256
-        #[arg(verbatim_doc_comment)]
-        algorithm: Option<String>,
-
-        /// File to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
-        #[arg(short, long)]
-        file: Option<String>,
-
-        /// Direct text input for hash comparing.
-        #[arg(short, long)]
-        text: Option<String>,
-
-        /// Hash to compare with.
-        #[arg(short, long)]
-        check_hash: Option<String>,
-    },
-
-    /// Check with given shasum file (alias: k)
-    #[command(alias = "k")]
-    Check {
-        /// Optional algorithm to use for calculate hash.
-        /// Leave blank to automatically detect the hash algorithm.
-        /// Supported algorithms:
-        ///  * MD2(Unsafe)
-        ///  * MD4(Unsafe)
-        ///  * MD5(Unsafe)
-        ///  * SHA1(Unsafe)
-        ///  * SHA224
-        ///  * SHA256
-        ///  * SHA384
-        ///  * SHA512
-        ///  * SHA512_256
-        #[arg(verbatim_doc_comment)]
-        algorithm: Option<String>,
-
-        /// shasum file to check with.
-        #[arg(short, long)]
-        check_file: Option<String>,
-    },
-}
-
-#[cfg(feature = "ring_backend")]
-#[derive(Subcommand)]
-enum Args {
-    /// Calculate hash for a file or text (alias: c)
-    #[command(alias = "c")]
-    Calculate {
-        /// Optional algorithm to use for calculate hash
-        /// Supported algorithms:
-        ///  * SHA256(default)
-        ///  * SHA384
-        ///  * SHA512
-        ///  * SHA512_256
-        #[arg(verbatim_doc_comment)]
-        algorithm: Option<String>,
-
-        /// File(s) to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
-        #[arg(short, long, num_args = 1..)]
-        file: Option<Vec<String>>,
-
-        /// Direct text input for hash calculation.
-        #[arg(short, long)]
-        text: Option<String>,
-    },
-
-    /// Compare with given hash (alias: m)
-    #[command(alias = "m")]
-    Compare {
-        /// Optional algorithm to use for calculate hash.
-        /// Leave blank to automatically detect the hash algorithm.
-        /// Supported algorithms:
-        ///  * SHA256
-        ///  * SHA384
-        ///  * SHA512
-        ///  * SHA512_256
-        #[arg(verbatim_doc_comment)]
-        algorithm: Option<String>,
-
-        /// File to calculate hash, specify filename with -f/--file or directly provide the filename. Specify "-" to read from standard input.
-        #[arg(short, long)]
-        file: Option<String>,
-
-        /// Direct text input for hash comparing.
-        #[arg(short, long)]
-        text: Option<String>,
-
-        /// Hash to compare with.
-        #[arg(short, long)]
-        check_hash: Option<String>,
-    },
-
-    /// Check with given shasum file (alias: k)
-    #[command(alias = "k")]
-    Check {
-        /// Optional algorithm to use for calculate hash.
-        /// Leave blank to automatically detect the hash algorithm.
-        /// Supported algorithms:
-        ///  * SHA256
-        ///  * SHA384
-        ///  * SHA512
-        ///  * SHA512_256
-        #[arg(verbatim_doc_comment)]
         algorithm: Option<String>,
 
         /// shasum file to check with.
@@ -307,56 +306,59 @@ enum Args {
 }
 
 fn detect_algorithm(input: Option<String>) -> Option<SupportedAlgorithm> {
-    match input {
-        Some(ref b) => Option::from(match_algorithm(b).unwrap_or_else(|e| {
-            eprintln!("{}", e);
+    input.map(|value| {
+        match_algorithm(&value).unwrap_or_else(|error| {
+            eprintln!("{}", error);
             process::exit(1);
-        })),
-        None => None, // User doesn't input algorithm
+        })
+    })
+}
+
+fn exit_with_error(message: &str) -> ! {
+    eprintln!("{}", message);
+    process::exit(1);
+}
+
+fn validate_input_source(file_present: bool, text_present: bool, help_command: &str) {
+    if file_present && text_present {
+        exit_with_error("Error: Both file and text options cannot be used together.");
+    }
+
+    if !file_present && !text_present {
+        exit_with_error(&format!(
+            "Error: At least one of file or text options must be provided.\nRun `{}` for more information.",
+            help_command
+        ));
     }
 }
 
 fn calculate(algorithm: Option<String>, file: Option<Vec<String>>, text: Option<String>) {
-    // --file option and --text option are mutually exclusive
-    if file.is_some() && text.is_some() {
-        eprintln!("Error: Both file and text options cannot be used together.");
-        process::exit(1);
-    }
+    validate_input_source(file.is_some(), text.is_some(), "ezcheck calculate --help");
 
-    if file.is_none() && text.is_none() {
-        eprintln!("Error: At least one of file or text options must be provided.\nRun `ezcheck calculate --help` for more information.");
-        process::exit(1);
-    }
-
-    let algorithm = detect_algorithm(algorithm);
-
-    let algorithm = match algorithm {
-        Some(a) => a,
-        _ => {
+    let algorithm = match detect_algorithm(algorithm) {
+        Some(algorithm) => algorithm,
+        None => {
             println!("No algorithm specified. Using SHA256 as the default.");
             SupportedAlgorithm::SHA256
         }
     };
 
-    if file.is_some() {
-        // File mode
-        for f in file.unwrap() {
-            let task = Calculate::new(Data::ReadFile(String::from(&f)), algorithm);
-            let result = task.compute();
-            match result {
-                Ok(result) => println!("{}  {}", result, &f),
-                Err(e) => eprintln!("{}", e),
+    if let Some(files) = file {
+        for file_path in files {
+            let task = Calculate::new(Data::ReadFile(file_path.clone()), algorithm);
+            match task.compute() {
+                Ok(result) => println!("{}  {}", result, file_path),
+                Err(error) => eprintln!("{}", error),
             }
         }
-    } else {
-        // Text mode
-        let text = text.unwrap();
+    } else if let Some(text) = text {
         let task = Calculate::new(Data::Text(text), algorithm);
-        let result = task.compute();
-        match result {
-            Ok(result) => println!("{}:  {}", algorithm, result),
-            Err(e) => eprintln!("{}", e),
+        match task.compute() {
+            Ok(result) => println!("{}", result),
+            Err(error) => eprintln!("{}", error),
         }
+    } else {
+        unreachable!("input validation guarantees that either file or text is present");
     }
 }
 
@@ -366,114 +368,123 @@ fn compare(
     text: Option<String>,
     check_hash: Option<String>,
 ) {
-    // --file option and --text option are mutually exclusive
-    if file.is_some() && text.is_some() {
-        eprintln!("Error: Both file and text options cannot be used together.");
-        process::exit(1);
-    }
-
-    if file.is_none() && text.is_none() {
-        eprintln!("Error: At least one of file or text options must be provided.\nRun `ezcheck compare --help` for more information.");
-        process::exit(1);
-    }
+    validate_input_source(file.is_some(), text.is_some(), "ezcheck compare --help");
 
     let hash = match check_hash {
-        Some(h) => h,
-        _ => {
-            eprintln!("Error: Must provide hash.");
-            process::exit(1);
-        }
+        Some(hash) => hash,
+        None => exit_with_error("Error: Must provide hash."),
     };
 
-    let algorithm = match detect_algorithm(algorithm) {
-        Some(a) => {
-            // User inputs valid algorithm
-            vec![a]
-        }
-        _ => match extra::detect_hash_algorithm(&hash) {
-            // User doesn't input algorithm
-            Ok(a) => {
-                if a.len() == 1 {
-                    println!("INFO: Detect Hash Algorithm: {}", a[0]);
-                } else {
-                    let algorithm_names: Vec<String> =
-                        a.iter().map(|alg| alg.to_string()).collect();
-
-                    println!(
-                        "INFO: Hash Algorithm could be {}",
-                        algorithm_names.join(", ")
-                    );
-                }
-                a
-            }
-            Err(e) => {
-                eprintln!("{}", e);
-                process::exit(1);
-            }
-        },
+    let resolved_hash = match resolve_hash_input(hash, detect_algorithm(algorithm)) {
+        Ok(resolved_hash) => resolved_hash,
+        Err(error) => exit_with_error(&error),
     };
 
-    for alg in &algorithm {
-        let task = if let Some(ref file_path) = file {
-            Compare::new(Data::ReadFile(file_path.clone()), hash.clone(), *alg)
-        } else if let Some(ref text) = text {
-            Compare::new(Data::Text(text.clone()), hash.clone(), *alg)
+    if resolved_hash.detected_from_hash {
+        if resolved_hash.algorithms.len() == 1 {
+            println!(
+                "INFO: Detect Hash Algorithm: {}",
+                resolved_hash.algorithms[0]
+            );
         } else {
-            // Cannot be here!
-            Compare::new(Data::Text("".to_string()), "".to_string(), *alg)
+            let algorithm_names: Vec<String> = resolved_hash
+                .algorithms
+                .iter()
+                .map(|algorithm| algorithm.to_string())
+                .collect();
+            println!(
+                "INFO: Hash Algorithm could be {}",
+                algorithm_names.join(", ")
+            );
+        }
+    }
+
+    let mut matched = false;
+
+    for algorithm in resolved_hash.algorithms {
+        let task = match (&file, &text) {
+            (Some(file_path), None) => Compare::new(
+                Data::ReadFile(file_path.clone()),
+                resolved_hash.hash.clone(),
+                algorithm,
+            ),
+            (None, Some(text)) => Compare::new(
+                Data::Text(text.clone()),
+                resolved_hash.hash.clone(),
+                algorithm,
+            ),
+            _ => unreachable!("input validation guarantees exactly one input source"),
         };
 
-        let result = task.compute();
-        match result {
+        match task.compute() {
             Ok(IfMatch::Match(message)) => {
                 println!("{}", message);
+                matched = true;
                 break;
             }
             Ok(IfMatch::Failed(message)) => {
                 println!("{}", message);
             }
-            Err(e) => eprintln!("{}", e),
+            Err(error) => eprintln!("{}", error),
         }
+    }
+
+    if !matched {
+        process::exit(1);
     }
 }
 
 fn check(algorithm: Option<String>, check_file: Option<String>) {
-    match check_file {
-        Some(f) => {
-            match phase_shasum_file(f, detect_algorithm(algorithm)) {
-                Ok(tasks) => {
-                    let mut file_name = String::new();
-                    let mut file_matched = false;
-                    for task in tasks {
-                        if file_name == task.data.to_string() && file_matched == true {
-                            continue;
-                        } else {
-                            let result = task.compute();
-                            match result {
-                                Ok(IfMatch::Match(message)) => {
-                                    file_name = task.data.to_string();
-                                    file_matched = true;
-                                    println!("{}: {}", task.data, message);
-                                }
-                                Ok(IfMatch::Failed(message)) => {
-                                    file_name = task.data.to_string();
-                                    file_matched = false;
-                                    println!("{}: {}", task.data, message);
-                                }
-                                Err(e) => eprintln!("{}: {}", task.data, e),
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    eprintln!("{}", e);
-                    process::exit(1);
-                }
-            };
-        }
-        None => eprintln!(
-            "Must provide a check file.\nRun `ezcheck check --help` for more information."
+    let check_file = match check_file {
+        Some(check_file) => check_file,
+        None => exit_with_error(
+            "Must provide a check file.\nRun `ezcheck check --help` for more information.",
         ),
+    };
+
+    match phase_shasum_file(check_file, detect_algorithm(algorithm)) {
+        Ok(tasks) => {
+            let mut current_task = None;
+            let mut current_task_matched = false;
+            let mut has_unmatched_task = false;
+
+            for task in tasks {
+                let task_key = (task.data.to_string(), task.expected_hash().to_string());
+
+                if current_task.as_ref() != Some(&task_key) {
+                    if current_task.is_some() && !current_task_matched {
+                        has_unmatched_task = true;
+                    }
+
+                    current_task = Some(task_key.clone());
+                    current_task_matched = false;
+                }
+
+                if current_task_matched {
+                    continue;
+                }
+
+                match task.compute() {
+                    Ok(IfMatch::Match(message)) => {
+                        current_task_matched = true;
+                        println!("{}: {}", task.data, message);
+                    }
+                    Ok(IfMatch::Failed(message)) => {
+                        println!("{}: {}", task.data, message);
+                    }
+                    Err(error) => eprintln!("{}: {}", task.data, error),
+                }
+            }
+
+            if current_task.is_some() && !current_task_matched {
+                has_unmatched_task = true;
+            }
+
+            if has_unmatched_task {
+                process::exit(1);
+            }
+        }
+        Err(error) => exit_with_error(&error),
     }
 }
 

@@ -20,9 +20,11 @@ compile_error!(
 
 pub mod calculator;
 pub mod extra;
+
 use std::fmt;
 use std::fs::File;
 use std::io::{stdin, BufRead, BufReader};
+use std::path::Path;
 
 pub struct Calculate {
     data: Data,
@@ -33,9 +35,7 @@ impl Calculate {
     pub fn new(data: Data, algorithm: calculator::SupportedAlgorithm) -> Calculate {
         Self { data, algorithm }
     }
-}
 
-impl Calculate {
     pub fn compute(&self) -> Result<String, String> {
         self.data.compute_hash(self.algorithm)
     }
@@ -47,12 +47,41 @@ pub struct Compare {
     algorithm: calculator::SupportedAlgorithm,
 }
 
+const ANSI_GREEN: &str = "\x1b[32m";
+const ANSI_RED: &str = "\x1b[31m";
+const ANSI_RESET: &str = "\x1b[0m";
+
+fn colorize(message: String, color: &str) -> String {
+    format!("{color}{message}{ANSI_RESET}")
+}
+
 impl Compare {
     pub fn new(data: Data, compare: String, algorithm: calculator::SupportedAlgorithm) -> Compare {
         Self {
             data,
             compare,
             algorithm,
+        }
+    }
+
+    pub fn expected_hash(&self) -> &str {
+        &self.compare
+    }
+
+    pub fn compute(&self) -> Result<IfMatch, String> {
+        let hash_result = self.data.compute_hash(self.algorithm)?;
+
+        if hash_result.eq_ignore_ascii_case(&self.compare) {
+            Ok(IfMatch::Match(colorize(
+                format!("{} OK", self.algorithm),
+                ANSI_GREEN,
+            )))
+        } else {
+            Ok(IfMatch::Failed(format!(
+                "{}  Current Hash:{}",
+                colorize(format!("{} FAILED", self.algorithm), ANSI_RED),
+                hash_result
+            )))
         }
     }
 }
@@ -65,44 +94,34 @@ pub enum IfMatch {
 
 impl PartialEq for IfMatch {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (IfMatch::Match(_), IfMatch::Match(_)) => true,
-            (IfMatch::Failed(_), IfMatch::Failed(_)) => true,
-            _ => false,
-        }
+        matches!(
+            (self, other),
+            (IfMatch::Match(_), IfMatch::Match(_)) | (IfMatch::Failed(_), IfMatch::Failed(_))
+        )
     }
 }
 
-impl Compare {
-    pub fn compute(&self) -> Result<IfMatch, String> {
-        let hash_result = match self.data.compute_hash(self.algorithm) {
-            Ok(hash_result) => hash_result,
-            Err(error) => return Err(error),
-        };
-
-        if hash_result == self.compare {
-            Ok(IfMatch::Match(format!("{:8} OK", self.algorithm)))
-        } else {
-            Ok(IfMatch::Failed(format!(
-                "{:8} FAILED  Current Hash:  {}",
-                self.algorithm, hash_result
-            )))
-        }
-    }
-}
+impl Eq for IfMatch {}
 
 pub enum Data {
-    ReadFile(String), // Input data from a file
-    Text(String),     // Input data from user input
+    ReadFile(String),
+    Text(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedHashInput {
+    pub hash: String,
+    pub algorithms: Vec<calculator::SupportedAlgorithm>,
+    pub detected_from_hash: bool,
 }
 
 impl fmt::Display for Data {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let algorithm = match self {
+        let value = match self {
             Data::ReadFile(file_name) => file_name,
             Data::Text(text) => text,
         };
-        write!(f, "{}", algorithm)
+        write!(f, "{}", value)
     }
 }
 
@@ -110,109 +129,118 @@ pub trait ComputeHash {
     fn compute_hash(&self, algorithm: calculator::SupportedAlgorithm) -> Result<String, String>;
 }
 
+fn compute_hash_from_reader<R: BufRead>(
+    reader: R,
+    algorithm: calculator::SupportedAlgorithm,
+) -> Result<String, String> {
+    calculator::hash_calculator(reader, algorithm)
+        .map_err(|error| format!("Error: Error calculating hash: {}", error))
+}
+
 impl ComputeHash for Data {
     fn compute_hash(&self, algorithm: calculator::SupportedAlgorithm) -> Result<String, String> {
         match self {
+            Data::ReadFile(path) if path == "-" => {
+                compute_hash_from_reader(stdin().lock(), algorithm)
+            }
             Data::ReadFile(path) => {
-                if path == "-" {
-                    // Input from standard input
-                    let stdin_lock = stdin().lock();
-                    match calculator::hash_calculator(stdin_lock, algorithm) {
-                        Ok(hash) => Ok(hash),
-                        Err(e) => Err(format!("Error: Error calculating hash: {}", e)),
-                    }
-                } else {
-                    // Input from file
-                    let file = match File::open(path) {
-                        Ok(file) => file,
-                        Err(e) => {
-                            return Err(format!("Error: Cannot opening file {}: {}", path, e))
-                        }
-                    };
-                    let reader = BufReader::new(file);
-                    match calculator::hash_calculator(reader, algorithm) {
-                        Ok(hash) => Ok(hash),
-                        Err(e) => Err(format!("Error: Error calculating hash: {}", e)),
-                    }
-                }
+                let file = File::open(path)
+                    .map_err(|error| format!("Error: Cannot open file {}: {}", path, error))?;
+                compute_hash_from_reader(BufReader::new(file), algorithm)
             }
             Data::Text(text) => {
-                let reader = BufReader::new(text.as_bytes());
-                match calculator::hash_calculator(reader, algorithm) {
-                    Ok(hash) => Ok(hash),
-                    Err(e) => Err(format!("Error: Error calculating hash: {}", e)),
-                }
+                compute_hash_from_reader(BufReader::new(text.as_bytes()), algorithm)
             }
         }
     }
 }
 
-#[cfg(any(feature = "mix_backend"))]
-pub fn match_algorithm<S: AsRef<str>>(
-    algorithm: S,
-) -> Result<calculator::SupportedAlgorithm, String> {
-    let algorithm = algorithm.as_ref().to_lowercase();
-    let algorithm = algorithm.as_ref();
+fn validate_hash_for_algorithm(
+    hash: &str,
+    algorithm: calculator::SupportedAlgorithm,
+) -> Result<(), String> {
+    let detected_algorithms =
+        extra::detect_hash_algorithm(hash).map_err(|error| format!("{} {}", error, hash))?;
 
-    match algorithm {
-        "md2" => Ok(calculator::SupportedAlgorithm::MD2),
-        "md4" => Ok(calculator::SupportedAlgorithm::MD4),
-        "md5" => Ok(calculator::SupportedAlgorithm::MD5),
-        "sha1" => Ok(calculator::SupportedAlgorithm::SHA1),
-        "sha224" => Ok(calculator::SupportedAlgorithm::SHA224),
-        "sha256" => Ok(calculator::SupportedAlgorithm::SHA256),
-        "sha384" => Ok(calculator::SupportedAlgorithm::SHA384),
-        "sha512" => Ok(calculator::SupportedAlgorithm::SHA512),
-        "sha512_256" | "sha512-256" | "sha512/256" => {
-            Ok(calculator::SupportedAlgorithm::SHA512_256)
-        }
-        "xxhash32" | "xxh32" => Ok(calculator::SupportedAlgorithm::XXHASH32),
-        "xxhash64" | "xxh64" => Ok(calculator::SupportedAlgorithm::XXHASH64),
-        "xxh3" | "xxh3_64" | "xxh3-64" | "xxh3/64" | "xxhash3_64" | "xxhash3-64" | "xxhash3/64" => {
-            Ok(calculator::SupportedAlgorithm::XXHASH3_64)
-        }
-        _ => Err(format!("Error: Unsupported algorithm: {}", algorithm)),
+    if detected_algorithms.contains(&algorithm) {
+        Ok(())
+    } else {
+        Err(format!(
+            "Error: Hash does not match algorithm {}.",
+            algorithm
+        ))
     }
 }
 
-#[cfg(any(feature = "hashes_backend"))]
-pub fn match_algorithm<S: AsRef<str>>(
-    algorithm: S,
-) -> Result<calculator::SupportedAlgorithm, String> {
-    let algorithm = algorithm.as_ref().to_lowercase();
-    let algorithm = algorithm.as_ref();
+fn parse_hash_input<S: AsRef<str>>(
+    hash_input: S,
+) -> Result<(Option<calculator::SupportedAlgorithm>, String), String> {
+    let hash_input = hash_input.as_ref().trim();
+    if hash_input.is_empty() {
+        return Err(String::from("Error: Invalid hash."));
+    }
 
-    match algorithm {
-        "md2" => Ok(calculator::SupportedAlgorithm::MD2),
-        "md4" => Ok(calculator::SupportedAlgorithm::MD4),
-        "md5" => Ok(calculator::SupportedAlgorithm::MD5),
-        "sha1" => Ok(calculator::SupportedAlgorithm::SHA1),
-        "sha224" => Ok(calculator::SupportedAlgorithm::SHA224),
-        "sha256" => Ok(calculator::SupportedAlgorithm::SHA256),
-        "sha384" => Ok(calculator::SupportedAlgorithm::SHA384),
-        "sha512" => Ok(calculator::SupportedAlgorithm::SHA512),
-        "sha512_256" | "sha512-256" | "sha512/256" => {
-            Ok(calculator::SupportedAlgorithm::SHA512_256)
+    if let Some((algorithm_name, hash)) = hash_input.split_once(':') {
+        let algorithm_name = algorithm_name.trim();
+        let hash = hash.trim();
+
+        if algorithm_name.is_empty() || hash.is_empty() {
+            return Err(String::from("Error: Invalid hash."));
         }
-        _ => Err(format!("Error: Unsupported algorithm: {}", algorithm)),
+
+        let algorithm = calculator::SupportedAlgorithm::from_input(algorithm_name)?;
+        validate_hash_for_algorithm(hash, algorithm)?;
+        Ok((Some(algorithm), hash.to_string()))
+    } else {
+        Ok((None, hash_input.to_string()))
     }
 }
 
-#[cfg(feature = "ring_backend")]
+pub fn resolve_hash_input<S: AsRef<str>>(
+    hash_input: S,
+    algorithm: Option<calculator::SupportedAlgorithm>,
+) -> Result<ResolvedHashInput, String> {
+    let (prefixed_algorithm, hash) = parse_hash_input(hash_input)?;
+
+    let algorithms = match (algorithm, prefixed_algorithm) {
+        (Some(specified_algorithm), Some(prefixed_algorithm))
+            if specified_algorithm != prefixed_algorithm =>
+        {
+            return Err(format!(
+                "Error: Conflicting algorithms: specified {}, hash prefix specifies {}.",
+                specified_algorithm, prefixed_algorithm
+            ));
+        }
+        (Some(specified_algorithm), _) => vec![specified_algorithm],
+        (None, Some(prefixed_algorithm)) => vec![prefixed_algorithm],
+        (None, None) => {
+            extra::detect_hash_algorithm(&hash).map_err(|error| format!("{} {}", error, hash))?
+        }
+    };
+
+    Ok(ResolvedHashInput {
+        hash,
+        algorithms,
+        detected_from_hash: algorithm.is_none() && prefixed_algorithm.is_none(),
+    })
+}
+
 pub fn match_algorithm<S: AsRef<str>>(
     algorithm: S,
 ) -> Result<calculator::SupportedAlgorithm, String> {
-    let algorithm = algorithm.as_ref().to_lowercase();
-    let algorithm = algorithm.as_ref();
+    calculator::SupportedAlgorithm::from_input(algorithm)
+}
 
-    match algorithm {
-        "sha256" => Ok(calculator::SupportedAlgorithm::SHA256),
-        "sha384" => Ok(calculator::SupportedAlgorithm::SHA384),
-        "sha512" => Ok(calculator::SupportedAlgorithm::SHA512),
-        "sha512_256" | "sha512-256" | "sha512/256" => {
-            Ok(calculator::SupportedAlgorithm::SHA512_256)
-        }
-        _ => Err(format!("Error: Unsupported algorithm: {}", algorithm)),
+fn resolve_shasum_entry_path(base_dir: &Path, file_path: &str) -> String {
+    if file_path == "-" {
+        return file_path.to_string();
+    }
+
+    let file_path = Path::new(file_path);
+    if file_path.is_absolute() || base_dir == Path::new(".") {
+        file_path.to_string_lossy().into_owned()
+    } else {
+        base_dir.join(file_path).to_string_lossy().into_owned()
     }
 }
 
@@ -227,65 +255,52 @@ pub fn phase_shasum_file<S: AsRef<str>>(
                                                  ^ In binary mode, neglected.
      */
     let shasum_file_path = shasum_file_path.as_ref();
-    let mut detect_algorithm = true;
-    if algorithm.is_some() {
-        detect_algorithm = false;
-    }
-
-    let file = match File::open(shasum_file_path) {
-        Ok(file) => file,
-        Err(error) => {
-            return Err(format!(
-                "Error: Cannot opening file {}: {}",
-                shasum_file_path, error
-            ))
-        }
-    };
+    let file = File::open(shasum_file_path)
+        .map_err(|error| format!("Error: Cannot open file {}: {}", shasum_file_path, error))?;
     let reader = BufReader::new(file);
+    let base_dir = Path::new(shasum_file_path)
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
 
-    let mut compare_tasks = vec![];
+    let mut compare_tasks = Vec::new();
 
     for line in reader.lines() {
-        let line = line.unwrap();
-        let parts: Vec<&str> = line.split_whitespace().collect(); // Split
+        let line = line.map_err(|error| {
+            format!(
+                "Error: Cannot read shasum file {}: {}",
+                shasum_file_path, error
+            )
+        })?;
+        let parts: Vec<&str> = line.split_whitespace().collect();
 
-        if parts.len() == 2 {
-            let hash = parts[0];
-            let mut file_path = parts[1].to_string();
-
-            let algorithms = match detect_algorithm {
-                true => match extra::detect_hash_algorithm(hash) {
-                    Ok(result) => result,
-                    Err(e) => return Err(format!("{} {}", e, hash)),
-                },
-                false => vec![algorithm.unwrap()],
-            };
-
-            if file_path.starts_with("*") {
-                // Neglect * starts with filename
-                file_path.remove(0);
-            }
-
-            for algorithm in algorithms {
-                compare_tasks.push(Compare::new(
-                    Data::ReadFile(file_path.clone()),
-                    hash.to_string(),
-                    algorithm,
-                ));
-            }
-        } else if parts.is_empty() {
-            // Blank line
+        if parts.is_empty() {
             continue;
-        } else {
+        }
+
+        if parts.len() != 2 {
             return Err("Error: Not a valid shasum file.".to_string());
         }
+
+        let resolved_hash = resolve_hash_input(parts[0], algorithm)?;
+        let file_path = parts[1].strip_prefix('*').unwrap_or(parts[1]);
+        let file_path = resolve_shasum_entry_path(base_dir, file_path);
+
+        for algorithm in resolved_hash.algorithms {
+            compare_tasks.push(Compare::new(
+                Data::ReadFile(file_path.clone()),
+                resolved_hash.hash.clone(),
+                algorithm,
+            ));
+        }
     }
+
     Ok(compare_tasks)
 }
 
 #[cfg(test)]
 mod test_core {
-    use super::{Calculate, Compare, Data};
+    use super::{match_algorithm, phase_shasum_file, resolve_hash_input, Calculate, Compare, Data};
     use crate::calculator;
     use crate::IfMatch::{Failed, Match};
 
@@ -333,16 +348,81 @@ mod test_core {
         assert_eq!(task.compute().unwrap(), Failed(String::from("")))
     }
 
-    // This test is only available in tests dir.
-    // use crate::core::phase_shasum_file;
-    // #[test]
-    // fn test_phase_shasum_file() {
-    //     let mut tasks = phase_shasum_file("tests/sha256sum.txt", Option::from(calculator::SupportedAlgorithm::SHA256)).unwrap();
-    //     for task in tasks {
-    //         assert_eq!(
-    //             task.compute().unwrap(),
-    //             "SHA256 OK"
-    //         )
-    //     }
-    // }
+    #[test]
+    fn test_compare_hash_text_is_case_insensitive() {
+        let task = Compare::new(
+            Data::Text(String::from("Veni, vidi, vici")),
+            String::from("B1610284C94BBF9AA78333E57DDCE234A5E845D61E09CE91A7E19FA24737F466"),
+            calculator::SupportedAlgorithm::SHA256,
+        );
+        assert_eq!(task.compute().unwrap(), Match(String::new()))
+    }
+
+    #[test]
+    fn test_phase_shasum_file_resolves_relative_paths() {
+        let tasks = phase_shasum_file(
+            "tests/sha256sum.txt",
+            Some(calculator::SupportedAlgorithm::SHA256),
+        )
+        .unwrap();
+
+        assert_eq!(tasks.len(), 2);
+        for task in tasks {
+            assert_eq!(task.compute().unwrap(), Match(String::new()));
+        }
+    }
+
+    #[test]
+    fn test_phase_shasum_file_supports_prefixed_hashes() {
+        let tasks = phase_shasum_file("tests/prefixed-shasum.txt", None).unwrap();
+
+        assert_eq!(tasks.len(), 2);
+        for task in tasks {
+            assert_eq!(task.compute().unwrap(), Match(String::new()));
+        }
+    }
+
+    #[test]
+    fn test_resolve_hash_input_supports_prefixed_hashes() {
+        let resolved = resolve_hash_input(
+            "ShA256:00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95",
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(
+            resolved.algorithms,
+            vec![calculator::SupportedAlgorithm::SHA256]
+        );
+        assert_eq!(
+            resolved.hash,
+            "00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95"
+        );
+        assert!(!resolved.detected_from_hash);
+    }
+
+    #[test]
+    fn test_resolve_hash_input_rejects_conflicting_algorithms() {
+        assert!(resolve_hash_input(
+            "sha512/256:00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95",
+            Some(calculator::SupportedAlgorithm::SHA256),
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn test_match_algorithm_supports_xxhash() {
+        assert_eq!(
+            match_algorithm("xxh64").unwrap(),
+            calculator::SupportedAlgorithm::XXHASH64
+        );
+    }
+
+    #[test]
+    fn test_match_algorithm_supports_case_insensitive_aliases() {
+        assert_eq!(
+            match_algorithm("sHa512/256").unwrap(),
+            calculator::SupportedAlgorithm::SHA512_256
+        );
+    }
 }
