@@ -1,183 +1,176 @@
-#[cfg(not(any(
-    feature = "hashes_backend",
-    feature = "ring_backend",
-    feature = "mix_backend"
-)))]
-compile_error!("You must enable at least one of the features: 'hashes_backend', 'ring_backend' or 'mix_backend'.");
-#[cfg(any(
-    all(feature = "hashes_backend", feature = "ring_backend"),
-    all(feature = "hashes_backend", feature = "mix_backend"),
-    all(feature = "ring_backend", feature = "mix_backend"),
-    all(
-        feature = "hashes_backend",
-        feature = "ring_backend",
-        feature = "mix_backend"
-    )
-))]
-compile_error!(
-    "Only one of the features `hashes_backend`, `ring_backend`, or `mix_backend` can be enabled at a time."
-);
+#[cfg(not(any(feature = "hashes_backend", feature = "ring_backend")))]
+compile_error!("You must enable at least one backend feature: 'hashes_backend' or 'ring_backend'.");
 
-pub mod calculator;
-pub mod extra;
+mod calculator;
+mod error;
 
+pub use calculator::SupportedAlgorithm;
+pub use error::EzcheckError;
+
+pub type Result<T> = std::result::Result<T, EzcheckError>;
+
+use std::ffi::OsString;
 use std::fmt;
 use std::fs::File;
 use std::io::{stdin, BufRead, BufReader};
-use std::path::Path;
+#[cfg(unix)]
+use std::os::unix::ffi::OsStringExt;
+use std::path::{Path, PathBuf};
 
-pub struct Calculate {
+/// 对一个输入执行全部候选算法，并保留它所属的单条校验记录。
+pub struct Verification {
     data: Data,
-    algorithm: calculator::SupportedAlgorithm,
+    expected_hash: String,
+    algorithms: Vec<SupportedAlgorithm>,
 }
 
-impl Calculate {
-    pub fn new(data: Data, algorithm: calculator::SupportedAlgorithm) -> Calculate {
-        Self { data, algorithm }
-    }
-
-    pub fn compute(&self) -> Result<String, String> {
-        self.data.compute_hash(self.algorithm)
-    }
-}
-
-pub struct Compare {
-    pub data: Data,
-    compare: String,
-    algorithm: calculator::SupportedAlgorithm,
-}
-
-const ANSI_GREEN: &str = "\x1b[32m";
-const ANSI_RED: &str = "\x1b[31m";
-const ANSI_RESET: &str = "\x1b[0m";
-
-fn colorize(message: String, color: &str) -> String {
-    format!("{color}{message}{ANSI_RESET}")
-}
-
-impl Compare {
-    pub fn new(data: Data, compare: String, algorithm: calculator::SupportedAlgorithm) -> Compare {
+impl Verification {
+    pub fn new(data: Data, resolved_hash: ResolvedHashInput) -> Self {
         Self {
             data,
-            compare,
+            expected_hash: resolved_hash.hash,
+            algorithms: resolved_hash.algorithms,
+        }
+    }
+
+    pub fn compute(&self) -> Result<Vec<VerificationOutcome>> {
+        let results = self.data.compute_hashes(&self.algorithms)?;
+        Ok(results
+            .into_iter()
+            .map(|(algorithm, hash)| compare_hash_result(algorithm, &self.expected_hash, hash))
+            .collect())
+    }
+
+    pub fn data(&self) -> &Data {
+        &self.data
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VerificationOutcome {
+    Match {
+        algorithm: SupportedAlgorithm,
+    },
+    Failed {
+        algorithm: SupportedAlgorithm,
+        current_hash: String,
+    },
+}
+
+fn compare_hash_result(
+    algorithm: SupportedAlgorithm,
+    expected_hash: &str,
+    current_hash: String,
+) -> VerificationOutcome {
+    if current_hash.eq_ignore_ascii_case(expected_hash) {
+        VerificationOutcome::Match { algorithm }
+    } else {
+        VerificationOutcome::Failed {
             algorithm,
-        }
-    }
-
-    pub fn expected_hash(&self) -> &str {
-        &self.compare
-    }
-
-    pub fn compute(&self) -> Result<IfMatch, String> {
-        let hash_result = self.data.compute_hash(self.algorithm)?;
-
-        if hash_result.eq_ignore_ascii_case(&self.compare) {
-            Ok(IfMatch::Match(colorize(
-                format!("{} OK", self.algorithm),
-                ANSI_GREEN,
-            )))
-        } else {
-            Ok(IfMatch::Failed(format!(
-                "{}  Current Hash:{}",
-                colorize(format!("{} FAILED", self.algorithm), ANSI_RED),
-                hash_result
-            )))
+            current_hash,
         }
     }
 }
 
-#[derive(Debug)]
-pub enum IfMatch {
-    Match(String),
-    Failed(String),
-}
-
-impl PartialEq for IfMatch {
-    fn eq(&self, other: &Self) -> bool {
-        matches!(
-            (self, other),
-            (IfMatch::Match(_), IfMatch::Match(_)) | (IfMatch::Failed(_), IfMatch::Failed(_))
-        )
-    }
-}
-
-impl Eq for IfMatch {}
-
+#[derive(Clone)]
 pub enum Data {
-    ReadFile(String),
+    File(PathBuf),
+    Stdin,
     Text(String),
+}
+
+impl Data {
+    pub fn from_path(path: PathBuf) -> Self {
+        if path.as_os_str() == "-" {
+            Self::Stdin
+        } else {
+            Self::File(path)
+        }
+    }
+
+    pub fn calculate(&self, algorithm: SupportedAlgorithm) -> Result<String> {
+        let mut hashes = self.compute_hashes(&[algorithm])?;
+        Ok(hashes
+            .pop()
+            .expect("a single requested algorithm always produces one hash")
+            .1)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedHashInput {
-    pub hash: String,
-    pub algorithms: Vec<calculator::SupportedAlgorithm>,
-    pub detected_from_hash: bool,
+    hash: String,
+    algorithms: Vec<SupportedAlgorithm>,
+    detected_from_hash: bool,
+}
+
+impl ResolvedHashInput {
+    pub fn hash(&self) -> &str {
+        &self.hash
+    }
+
+    pub fn algorithms(&self) -> &[SupportedAlgorithm] {
+        &self.algorithms
+    }
+
+    pub fn detected_from_hash(&self) -> bool {
+        self.detected_from_hash
+    }
 }
 
 impl fmt::Display for Data {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let value = match self {
-            Data::ReadFile(file_name) => file_name,
+            Data::File(path) => return write!(f, "{}", path.display()),
+            Data::Stdin => "-",
             Data::Text(text) => text,
         };
-        write!(f, "{}", value)
+        write!(f, "{value}")
     }
 }
 
-pub trait ComputeHash {
-    fn compute_hash(&self, algorithm: calculator::SupportedAlgorithm) -> Result<String, String>;
-}
-
-fn compute_hash_from_reader<R: BufRead>(
+fn compute_hashes_from_reader<R: BufRead>(
     reader: R,
-    algorithm: calculator::SupportedAlgorithm,
-) -> Result<String, String> {
-    calculator::hash_calculator(reader, algorithm)
-        .map_err(|error| format!("Error: Error calculating hash: {}", error))
+    algorithms: &[SupportedAlgorithm],
+) -> Result<Vec<(SupportedAlgorithm, String)>> {
+    calculator::calculate_hashes(reader, algorithms).map_err(EzcheckError::CalculateHash)
 }
 
-impl ComputeHash for Data {
-    fn compute_hash(&self, algorithm: calculator::SupportedAlgorithm) -> Result<String, String> {
+impl Data {
+    fn compute_hashes(
+        &self,
+        algorithms: &[SupportedAlgorithm],
+    ) -> Result<Vec<(SupportedAlgorithm, String)>> {
         match self {
-            Data::ReadFile(path) if path == "-" => {
-                compute_hash_from_reader(stdin().lock(), algorithm)
-            }
-            Data::ReadFile(path) => {
-                let file = File::open(path)
-                    .map_err(|error| format!("Error: Cannot open file {}: {}", path, error))?;
-                compute_hash_from_reader(BufReader::new(file), algorithm)
+            Data::Stdin => compute_hashes_from_reader(stdin().lock(), algorithms),
+            Data::File(path) => {
+                let file = File::open(path).map_err(|source| EzcheckError::OpenFile {
+                    path: path.clone(),
+                    source,
+                })?;
+                compute_hashes_from_reader(BufReader::new(file), algorithms)
             }
             Data::Text(text) => {
-                compute_hash_from_reader(BufReader::new(text.as_bytes()), algorithm)
+                compute_hashes_from_reader(BufReader::new(text.as_bytes()), algorithms)
             }
         }
     }
 }
 
-fn validate_hash_for_algorithm(
-    hash: &str,
-    algorithm: calculator::SupportedAlgorithm,
-) -> Result<(), String> {
-    let detected_algorithms =
-        extra::detect_hash_algorithm(hash).map_err(|error| format!("{} {}", error, hash))?;
+fn validate_hash_for_algorithm(hash: &str, algorithm: SupportedAlgorithm) -> Result<()> {
+    let detected_algorithms = SupportedAlgorithm::detect_from_hash(hash)?;
 
     if detected_algorithms.contains(&algorithm) {
         Ok(())
     } else {
-        Err(format!(
-            "Error: Hash does not match algorithm {}.",
-            algorithm
-        ))
+        Err(EzcheckError::HashAlgorithmMismatch(algorithm))
     }
 }
 
-fn parse_hash_input<S: AsRef<str>>(
-    hash_input: S,
-) -> Result<(Option<calculator::SupportedAlgorithm>, String), String> {
+fn parse_hash_input<S: AsRef<str>>(hash_input: S) -> Result<(Option<SupportedAlgorithm>, String)> {
     let hash_input = hash_input.as_ref().trim();
     if hash_input.is_empty() {
-        return Err(String::from("Error: Invalid hash."));
+        return Err(EzcheckError::InvalidHash(String::new()));
     }
 
     if let Some((algorithm_name, hash)) = hash_input.split_once(':') {
@@ -185,10 +178,10 @@ fn parse_hash_input<S: AsRef<str>>(
         let hash = hash.trim();
 
         if algorithm_name.is_empty() || hash.is_empty() {
-            return Err(String::from("Error: Invalid hash."));
+            return Err(EzcheckError::InvalidHash(hash_input.to_string()));
         }
 
-        let algorithm = calculator::SupportedAlgorithm::from_input(algorithm_name)?;
+        let algorithm = SupportedAlgorithm::from_input(algorithm_name)?;
         validate_hash_for_algorithm(hash, algorithm)?;
         Ok((Some(algorithm), hash.to_string()))
     } else {
@@ -198,24 +191,26 @@ fn parse_hash_input<S: AsRef<str>>(
 
 pub fn resolve_hash_input<S: AsRef<str>>(
     hash_input: S,
-    algorithm: Option<calculator::SupportedAlgorithm>,
-) -> Result<ResolvedHashInput, String> {
+    algorithm: Option<SupportedAlgorithm>,
+) -> Result<ResolvedHashInput> {
     let (prefixed_algorithm, hash) = parse_hash_input(hash_input)?;
 
     let algorithms = match (algorithm, prefixed_algorithm) {
         (Some(specified_algorithm), Some(prefixed_algorithm))
             if specified_algorithm != prefixed_algorithm =>
         {
-            return Err(format!(
-                "Error: Conflicting algorithms: specified {}, hash prefix specifies {}.",
-                specified_algorithm, prefixed_algorithm
-            ));
+            return Err(EzcheckError::ConflictingAlgorithms {
+                specified: specified_algorithm,
+                prefixed: prefixed_algorithm,
+            });
         }
-        (Some(specified_algorithm), _) => vec![specified_algorithm],
+        (Some(specified_algorithm), None) => {
+            validate_hash_for_algorithm(&hash, specified_algorithm)?;
+            vec![specified_algorithm]
+        }
+        (Some(specified_algorithm), Some(_)) => vec![specified_algorithm],
         (None, Some(prefixed_algorithm)) => vec![prefixed_algorithm],
-        (None, None) => {
-            extra::detect_hash_algorithm(&hash).map_err(|error| format!("{} {}", error, hash))?
-        }
+        (None, None) => SupportedAlgorithm::detect_from_hash(&hash)?,
     };
 
     Ok(ResolvedHashInput {
@@ -225,29 +220,98 @@ pub fn resolve_hash_input<S: AsRef<str>>(
     })
 }
 
-pub fn match_algorithm<S: AsRef<str>>(
-    algorithm: S,
-) -> Result<calculator::SupportedAlgorithm, String> {
-    calculator::SupportedAlgorithm::from_input(algorithm)
+fn invalid_shasum_line(line: usize) -> EzcheckError {
+    EzcheckError::InvalidShasumLine { line }
 }
 
-fn resolve_shasum_entry_path(base_dir: &Path, file_path: &str) -> String {
-    if file_path == "-" {
-        return file_path.to_string();
+fn unescape_shasum_path(path: &[u8], line_number: usize) -> Result<Vec<u8>> {
+    let mut result = Vec::with_capacity(path.len());
+    let mut index = 0;
+
+    while index < path.len() {
+        if path[index] != b'\\' {
+            result.push(path[index]);
+            index += 1;
+            continue;
+        }
+
+        let escaped = *path
+            .get(index + 1)
+            .ok_or_else(|| invalid_shasum_line(line_number))?;
+        match escaped {
+            b'\\' => result.push(b'\\'),
+            b'n' => result.push(b'\n'),
+            b'r' => result.push(b'\r'),
+            _ => return Err(invalid_shasum_line(line_number)),
+        }
+        index += 2;
     }
 
-    let file_path = Path::new(file_path);
-    if file_path.is_absolute() || base_dir == Path::new(".") {
-        file_path.to_string_lossy().into_owned()
+    Ok(result)
+}
+
+#[cfg(unix)]
+fn path_from_bytes(path: Vec<u8>, _line_number: usize) -> Result<PathBuf> {
+    Ok(PathBuf::from(OsString::from_vec(path)))
+}
+
+#[cfg(not(unix))]
+fn path_from_bytes(path: Vec<u8>, line_number: usize) -> Result<PathBuf> {
+    String::from_utf8(path)
+        .map(PathBuf::from)
+        .map_err(|_| invalid_shasum_line(line_number))
+}
+
+fn parse_shasum_line(line: &[u8], line_number: usize) -> Result<Option<(String, PathBuf)>> {
+    let mut line = line;
+    if line.ends_with(b"\n") {
+        line = &line[..line.len() - 1];
+    }
+    if line.ends_with(b"\r") {
+        line = &line[..line.len() - 1];
+    }
+    if line.iter().all(|byte| byte.is_ascii_whitespace()) {
+        return Ok(None);
+    }
+
+    let escaped = line.starts_with(b"\\");
+    if escaped {
+        line = &line[1..];
+    }
+
+    let separator = line
+        .iter()
+        .position(|byte| *byte == b' ')
+        .ok_or_else(|| invalid_shasum_line(line_number))?;
+    let mode = line
+        .get(separator + 1)
+        .copied()
+        .ok_or_else(|| invalid_shasum_line(line_number))?;
+    if mode != b' ' && mode != b'*' {
+        return Err(invalid_shasum_line(line_number));
+    }
+
+    let hash = std::str::from_utf8(&line[..separator])
+        .map_err(|_| invalid_shasum_line(line_number))?
+        .to_string();
+    let raw_path = line
+        .get(separator + 2..)
+        .filter(|path| !path.is_empty())
+        .ok_or_else(|| invalid_shasum_line(line_number))?;
+    let path = if escaped {
+        unescape_shasum_path(raw_path, line_number)?
     } else {
-        base_dir.join(file_path).to_string_lossy().into_owned()
-    }
+        raw_path.to_vec()
+    };
+
+    Ok(Some((hash, path_from_bytes(path, line_number)?)))
 }
 
-pub fn phase_shasum_file<S: AsRef<str>>(
-    shasum_file_path: S,
-    algorithm: Option<calculator::SupportedAlgorithm>,
-) -> Result<Vec<Compare>, String> {
+/// 将校验文件解析为彼此独立的校验记录。
+pub fn parse_shasum_file<P: AsRef<Path>>(
+    shasum_file_path: P,
+    algorithm: Option<SupportedAlgorithm>,
+) -> Result<Vec<Verification>> {
     /*
     Example shasum file:
         ee1fb7719c31070f1fbdc8f2d32370c9d1ca6962  image.png
@@ -255,131 +319,158 @@ pub fn phase_shasum_file<S: AsRef<str>>(
                                                  ^ In binary mode, neglected.
      */
     let shasum_file_path = shasum_file_path.as_ref();
-    let file = File::open(shasum_file_path)
-        .map_err(|error| format!("Error: Cannot open file {}: {}", shasum_file_path, error))?;
-    let reader = BufReader::new(file);
-    let base_dir = Path::new(shasum_file_path)
-        .parent()
-        .filter(|path| !path.as_os_str().is_empty())
-        .unwrap_or(Path::new("."));
+    let file = File::open(shasum_file_path).map_err(|source| EzcheckError::OpenFile {
+        path: shasum_file_path.to_path_buf(),
+        source,
+    })?;
+    let mut reader = BufReader::new(file);
+    let mut entries = Vec::new();
+    let mut line = Vec::new();
+    let mut line_number = 0;
 
-    let mut compare_tasks = Vec::new();
+    loop {
+        line.clear();
+        let read =
+            reader
+                .read_until(b'\n', &mut line)
+                .map_err(|source| EzcheckError::ReadShasumFile {
+                    path: shasum_file_path.to_path_buf(),
+                    source,
+                })?;
+        if read == 0 {
+            break;
+        }
+        line_number += 1;
 
-    for line in reader.lines() {
-        let line = line.map_err(|error| {
-            format!(
-                "Error: Cannot read shasum file {}: {}",
-                shasum_file_path, error
-            )
-        })?;
-        let parts: Vec<&str> = line.split_whitespace().collect();
-
-        if parts.is_empty() {
+        let Some((hash, file_path)) = parse_shasum_line(&line, line_number)? else {
             continue;
-        }
+        };
 
-        if parts.len() != 2 {
-            return Err("Error: Not a valid shasum file.".to_string());
-        }
+        let resolved_hash = resolve_hash_input(&hash, algorithm)?;
 
-        let resolved_hash = resolve_hash_input(parts[0], algorithm)?;
-        let file_path = parts[1].strip_prefix('*').unwrap_or(parts[1]);
-        let file_path = resolve_shasum_entry_path(base_dir, file_path);
-
-        for algorithm in resolved_hash.algorithms {
-            compare_tasks.push(Compare::new(
-                Data::ReadFile(file_path.clone()),
-                resolved_hash.hash.clone(),
-                algorithm,
-            ));
-        }
+        entries.push(Verification::new(Data::from_path(file_path), resolved_hash));
     }
 
-    Ok(compare_tasks)
+    Ok(entries)
 }
 
 #[cfg(test)]
 mod test_core {
-    use super::{match_algorithm, phase_shasum_file, resolve_hash_input, Calculate, Compare, Data};
-    use crate::calculator;
-    use crate::IfMatch::{Failed, Match};
+    use super::{
+        parse_shasum_file, parse_shasum_line, resolve_hash_input, Data, SupportedAlgorithm,
+        Verification,
+    };
+    use crate::EzcheckError;
+    use crate::VerificationOutcome::{Failed, Match};
+    use std::path::PathBuf;
+
+    fn verification(
+        data: Data,
+        expected_hash: &str,
+        algorithm: SupportedAlgorithm,
+    ) -> Verification {
+        let resolved_hash = resolve_hash_input(expected_hash, Some(algorithm)).unwrap();
+        Verification::new(data, resolved_hash)
+    }
 
     #[test]
     fn test_calculate_compute_hash_file() {
-        let task = Calculate::new(
-            Data::ReadFile(String::from("tests/滕王阁序.txt")),
-            calculator::SupportedAlgorithm::SHA256,
-        );
+        let data = Data::File(PathBuf::from("tests/滕王阁序.txt"));
         assert_eq!(
-            task.compute().unwrap(),
+            data.calculate(SupportedAlgorithm::SHA256).unwrap(),
             "00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95"
         );
     }
 
     #[test]
     fn test_calculate_compute_hash_text() {
-        let task = Calculate::new(
-            Data::Text(String::from("Veni, vidi, vici")),
-            calculator::SupportedAlgorithm::SHA256,
-        );
+        let data = Data::Text(String::from("Veni, vidi, vici"));
         assert_eq!(
-            task.compute().unwrap(),
+            data.calculate(SupportedAlgorithm::SHA256).unwrap(),
             "b1610284c94bbf9aa78333e57ddce234a5e845d61e09ce91a7e19fa24737f466"
         );
     }
 
     #[test]
     fn test_compare_hash_file() {
-        let task = Compare::new(
-            Data::ReadFile(String::from("tests/滕王阁序.txt")),
-            String::from("00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95"),
-            calculator::SupportedAlgorithm::SHA256,
+        let task = verification(
+            Data::File(PathBuf::from("tests/滕王阁序.txt")),
+            "00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95",
+            SupportedAlgorithm::SHA256,
         );
-        assert_eq!(task.compute().unwrap(), Match("".to_string()))
+        assert_eq!(
+            task.compute().unwrap(),
+            vec![Match {
+                algorithm: SupportedAlgorithm::SHA256,
+            }]
+        )
     }
 
     #[test]
     fn test_compare_hash_text() {
-        let task = Compare::new(
+        let task = verification(
             Data::Text(String::from("Veni, vidi, vici")),
-            String::from("a1610284c94bbf9aa78333e57ddce234a5e845d61e09ce91a7e19fa24737f466"),
-            calculator::SupportedAlgorithm::SHA256,
+            "a1610284c94bbf9aa78333e57ddce234a5e845d61e09ce91a7e19fa24737f466",
+            SupportedAlgorithm::SHA256,
         );
-        assert_eq!(task.compute().unwrap(), Failed(String::from("")))
+        assert_eq!(
+            task.compute().unwrap(),
+            vec![Failed {
+                algorithm: SupportedAlgorithm::SHA256,
+                current_hash: String::from(
+                    "b1610284c94bbf9aa78333e57ddce234a5e845d61e09ce91a7e19fa24737f466"
+                ),
+            }]
+        )
     }
 
     #[test]
     fn test_compare_hash_text_is_case_insensitive() {
-        let task = Compare::new(
+        let task = verification(
             Data::Text(String::from("Veni, vidi, vici")),
-            String::from("B1610284C94BBF9AA78333E57DDCE234A5E845D61E09CE91A7E19FA24737F466"),
-            calculator::SupportedAlgorithm::SHA256,
+            "B1610284C94BBF9AA78333E57DDCE234A5E845D61E09CE91A7E19FA24737F466",
+            SupportedAlgorithm::SHA256,
         );
-        assert_eq!(task.compute().unwrap(), Match(String::new()))
-    }
-
-    #[test]
-    fn test_phase_shasum_file_resolves_relative_paths() {
-        let tasks = phase_shasum_file(
-            "tests/sha256sum.txt",
-            Some(calculator::SupportedAlgorithm::SHA256),
+        assert_eq!(
+            task.compute().unwrap(),
+            vec![Match {
+                algorithm: SupportedAlgorithm::SHA256,
+            }]
         )
-        .unwrap();
-
-        assert_eq!(tasks.len(), 2);
-        for task in tasks {
-            assert_eq!(task.compute().unwrap(), Match(String::new()));
-        }
     }
 
     #[test]
-    fn test_phase_shasum_file_supports_prefixed_hashes() {
-        let tasks = phase_shasum_file("tests/prefixed-shasum.txt", None).unwrap();
+    fn test_parse_shasum_file_preserves_relative_paths() {
+        let entries =
+            parse_shasum_file("tests/sha256sum.txt", Some(SupportedAlgorithm::SHA256)).unwrap();
 
-        assert_eq!(tasks.len(), 2);
-        for task in tasks {
-            assert_eq!(task.compute().unwrap(), Match(String::new()));
+        assert_eq!(entries.len(), 2);
+        assert!(matches!(
+            entries[0].data(),
+            Data::File(path) if path == &PathBuf::from("滕王阁序.txt")
+        ));
+        assert!(matches!(
+            entries[1].data(),
+            Data::File(path) if path == &PathBuf::from("image.jpg")
+        ));
+    }
+
+    #[test]
+    fn test_parse_shasum_file_supports_prefixed_hashes() {
+        let entries = parse_shasum_file("tests/prefixed-shasum.txt", None).unwrap();
+
+        assert_eq!(entries.len(), 2);
+        for entry in &entries {
+            assert_eq!(entry.algorithms, vec![SupportedAlgorithm::SHA256]);
         }
+        assert!(matches!(
+            entries[0].data(),
+            Data::File(path) if path == &PathBuf::from("滕王阁序.txt")
+        ));
+        assert!(matches!(
+            entries[1].data(),
+            Data::File(path) if path == &PathBuf::from("image.jpg")
+        ));
     }
 
     #[test]
@@ -390,39 +481,61 @@ mod test_core {
         )
         .unwrap();
 
+        assert_eq!(resolved.algorithms(), &[SupportedAlgorithm::SHA256]);
         assert_eq!(
-            resolved.algorithms,
-            vec![calculator::SupportedAlgorithm::SHA256]
-        );
-        assert_eq!(
-            resolved.hash,
+            resolved.hash(),
             "00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95"
         );
-        assert!(!resolved.detected_from_hash);
+        assert!(!resolved.detected_from_hash());
     }
 
     #[test]
     fn test_resolve_hash_input_rejects_conflicting_algorithms() {
-        assert!(resolve_hash_input(
+        let error = resolve_hash_input(
             "sha512/256:00691413c731ee37f551bfaca6a34b8443b3e85d7c0816a6fe90aa8fc8eaec95",
-            Some(calculator::SupportedAlgorithm::SHA256),
+            Some(SupportedAlgorithm::SHA256),
         )
-        .is_err());
+        .unwrap_err();
+
+        assert!(matches!(
+            error,
+            EzcheckError::ConflictingAlgorithms {
+                specified: SupportedAlgorithm::SHA256,
+                prefixed: SupportedAlgorithm::SHA512_256,
+            }
+        ));
     }
 
     #[test]
-    fn test_match_algorithm_supports_xxhash() {
+    fn test_explicit_algorithm_rejects_an_invalid_hash_with_a_typed_error() {
+        let error = resolve_hash_input("not-a-hash", Some(SupportedAlgorithm::SHA256)).unwrap_err();
+
+        assert!(matches!(
+            error,
+            EzcheckError::InvalidHash(hash) if hash == "not-a-hash"
+        ));
+    }
+
+    #[test]
+    fn test_invalid_shasum_line_reports_its_line_number() {
+        let error = parse_shasum_line(b"not-a-shasum-line\n", 7).unwrap_err();
+
+        assert!(matches!(error, EzcheckError::InvalidShasumLine { line: 7 }));
+    }
+
+    #[test]
+    fn test_supported_algorithm_supports_xxhash_aliases() {
         assert_eq!(
-            match_algorithm("xxh64").unwrap(),
-            calculator::SupportedAlgorithm::XXHASH64
+            SupportedAlgorithm::from_input("xxh64").unwrap(),
+            SupportedAlgorithm::XXHASH64
         );
     }
 
     #[test]
-    fn test_match_algorithm_supports_case_insensitive_aliases() {
+    fn test_supported_algorithm_supports_case_insensitive_aliases() {
         assert_eq!(
-            match_algorithm("sHa512/256").unwrap(),
-            calculator::SupportedAlgorithm::SHA512_256
+            SupportedAlgorithm::from_input("sHa512/256").unwrap(),
+            SupportedAlgorithm::SHA512_256
         );
     }
 }

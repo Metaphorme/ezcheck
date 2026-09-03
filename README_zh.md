@@ -9,8 +9,8 @@
 
 ezcheck（或 easy check）是一个轻量、高性能、跨平台、易于使用的用于计算、对比和验证字符串或文件哈希值的工具，用于防止内容篡改和确保文件的完整性。
 
-ezcheck 有三个后端：[ring](https://docs.rs/ring)，[hashes](https://docs.rs/hashes)
-和混合后端（mix backend，同时使用 [ring](https://docs.rs/ring)，[hashes](https://docs.rs/hashes)），并且您只能选择其中一个。这些后端的主要差异在于：
+ezcheck 提供两个可叠加的后端特性：[ring](https://docs.rs/ring) 和
+[hashes](https://docs.rs/hashes)。可以单独启用任意一个，也可以同时启用；`mix_backend` 是同时启用两者的兼容别名。主要差异如下：
 
 | 特点    | ring                               | hashes                                                          | mix（混合后端，推荐使用）                                                                                  |
 |-------|------------------------------------|-----------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
@@ -19,7 +19,7 @@ ezcheck 有三个后端：[ring](https://docs.rs/ring)，[hashes](https://docs.r
 | 实现语言  | Assembly, Rust, C 等。               | Rust                                                            | Assembly, Rust, C 等。                                                                            |
 | 兼容性   | 可能无法在一些系统和架构上工作。                   | 和 Rust 兼容性一致。                                                   | 与 ring 相同。                                                                                      |
 
-❗️ 为了兼顾最快的速度和最大的算法兼容性，默认后端是混合后端（mix backend）。
+❗️ 为了兼顾最快的速度和最大的算法兼容性，默认特性集合是混合后端（mix backend）。
 
 ⚠️ 请注意，虽然 ezcheck 支持很多哈希算法，但是`MD2`，`MD4`，`MD5`，`SHA1`已被证明**不安全**。ezcheck
 仍然提供它们以实现最大的算法兼容性，但并不建议用户继续使用它们。
@@ -60,7 +60,7 @@ $ x env use ezcheck
 
 ```bash
 $ git clone https://github.com/Metaphorme/ezcheck && cd ezcheck
-$ # 可从 mix backend、hashes backend、ring backend 中任选其一
+$ # 选择能力集合；ring_backend 与 hashes_backend 也可以组合启用
 $ # mix backend
 $ cargo build --release
 $ # ring backend
@@ -172,7 +172,7 @@ sha256:b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2 *image.j
 $ # 用法：
 $ #  ezcheck check|k [算法 (留空则自动检测算法)] -c 验证文件
 $
-$ # 验证文件中的相对路径会以该验证文件所在目录为基准解析。
+$ # 验证文件中的相对路径会以当前工作目录为基准解析。
 $ # 例子：
 $ ezcheck k sha256 -c sha256sum.txt 
 滕王阁序.txt: SHA256 OK

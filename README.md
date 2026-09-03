@@ -10,9 +10,9 @@
 ezcheck(easy check) is an easy-to-use, lightweight, cross-platform, and high-performance tool for calculating,
 comparing, and verifying hash of strings and files. Designed to prevent content tampering and ensure file integrity.
 
-ezcheck have three backends: [ring](https://docs.rs/ring), [hashes](https://docs.rs/hashes) and mix
-backend([ring](https://docs.rs/ring) and [hashes](https://docs.rs/hashes)), and you can only choose
-one of them. The main differences between them are:
+ezcheck exposes two additive backend features: [ring](https://docs.rs/ring) and
+[hashes](https://docs.rs/hashes). Either feature can be enabled alone or both can be enabled together;
+`mix_backend` is the compatibility alias that enables both. The main differences are:
 
 | Features             | ring                                                       | hashes                                                          | mix(Recommended)                                                                                |
 |----------------------|------------------------------------------------------------|-----------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
@@ -21,7 +21,7 @@ one of them. The main differences between them are:
 | Implement languages  | Assembly, Rust, C and etc..                                | Rust                                                            | Assembly, Rust, C and etc..                                                                     |
 | Compatibility        | May not work on every machine with different architecture. | Works well with Rust.                                           | Same to ring.                                                                                   |
 
-❗️ To achieve both fastest speed and maximum compatibility, the default backend is **mix backend**.
+❗️ To achieve both fastest speed and maximum compatibility, the default feature set is **mix backend**.
 
 ⚠️ Please notice that although ezcheck supports a lot of hash algorithms, `MD2`, `MD4`, `MD5`, `SHA1` are proven to be
 **insecure**. ezcheck still provides them for maximum compatibility, but **it does not recommend users continue to use
@@ -63,7 +63,7 @@ $ x env use ezcheck
 
 ```bash
 $ git clone https://github.com/Metaphorme/ezcheck && cd ezcheck
-$ # Choose one from mix backend, hashes backend or ring backend
+$ # Choose a capability set; ring_backend and hashes_backend can also be combined
 $ # mix backend
 $ cargo build --release
 $ # ring backend
@@ -176,7 +176,7 @@ sha256:b4c5e1d0a1f84a07ef6f329d3dcec62bce40103f49d8088e2b1b98a87e4ff0c2 *image.j
 $ # Usage:
 $ #  ezcheck check|k [ALGORITHM (Leave blank to automatically detect algorithm)] -c check-file
 $
-$ # Relative paths inside the check file are resolved from the check file's directory.
+$ # Relative paths inside the check file are resolved from the current working directory.
 $ # Example:
 $ ezcheck k sha256 -c sha256sum.txt 
 滕王阁序.txt: SHA256 OK

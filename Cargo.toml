@@ -23,6 +23,6 @@ twox-hash = { version = "2.1.2", features = ["std"] }
 
 [features]
 default = ["mix_backend"]
-hashes_backend = ["md2", "md4", "md-5", "sha1", "sha2", "digest"]
-ring_backend = ["ring"]
-mix_backend = ["md2", "md4", "md-5", "sha1", "sha2", "digest", "ring"]
+hashes_backend = ["dep:md2", "dep:md4", "dep:md-5", "dep:sha1", "dep:sha2", "dep:digest"]
+ring_backend = ["dep:ring"]
+mix_backend = ["hashes_backend", "ring_backend"]
