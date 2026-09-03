@@ -24,6 +24,29 @@ fn unique_temp_dir() -> PathBuf {
     dir
 }
 
+#[cfg(target_os = "macos")]
+fn unsupported_non_utf8_path(error: &std::io::Error) -> bool {
+    // macOS 文件系统拒绝非法 UTF-8 路径时返回 EILSEQ（errno 92）。
+    error.raw_os_error() == Some(92)
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn unsupported_non_utf8_path(_error: &std::io::Error) -> bool {
+    false
+}
+
+#[cfg(unix)]
+fn write_non_utf8_fixture(path: &std::path::Path, contents: &[u8]) -> bool {
+    match fs::write(path, contents) {
+        Ok(()) => true,
+        Err(error) if unsupported_non_utf8_path(&error) => {
+            eprintln!("skipped: filesystem cannot create non-UTF-8 fixture path ({error})");
+            false
+        }
+        Err(error) => panic!("cannot write non-UTF-8 fixture {path:?}: {error}"),
+    }
+}
+
 #[test]
 fn calculate_text_prints_hash_only() {
     let output = Command::new(ezcheck_bin())
@@ -279,7 +302,9 @@ fn check_supports_non_utf8_file_names() {
     check_line.extend_from_slice(file_name.as_os_str().as_bytes());
     check_line.push(b'\n');
 
-    fs::write(&file_path, b"Hello").unwrap();
+    if !write_non_utf8_fixture(&file_path, b"Hello") {
+        return;
+    }
     fs::write(&check_path, check_line).unwrap();
 
     let output = Command::new(ezcheck_bin())
@@ -410,7 +435,9 @@ fn generated_check_file_preserves_special_file_name_bytes() {
     let file_name = std::ffi::OsString::from_vec(b"payload\\line\ncarriage\r-\xff.bin".to_vec());
     let file_path = dir.join(&file_name);
     let check_path = dir.join("sha256sum.txt");
-    fs::write(&file_path, b"Hello").unwrap();
+    if !write_non_utf8_fixture(&file_path, b"Hello") {
+        return;
+    }
 
     let generated = Command::new(ezcheck_bin())
         .args(["calculate", "sha256", "-f"])

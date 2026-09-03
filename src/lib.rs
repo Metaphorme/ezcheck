@@ -9,6 +9,7 @@ pub use error::EzcheckError;
 
 pub type Result<T> = std::result::Result<T, EzcheckError>;
 
+#[cfg(unix)]
 use std::ffi::OsString;
 use std::fmt;
 use std::fs::File;
