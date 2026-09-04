@@ -4,7 +4,10 @@ use std::io::Write;
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+static NEXT_TEMP_DIR_ID: AtomicU64 = AtomicU64::new(0);
 
 fn ezcheck_bin() -> &'static str {
     env!("CARGO_BIN_EXE_ezcheck")
@@ -18,14 +21,14 @@ fn expected_usage(subcommand: &str) -> String {
 }
 
 fn unique_temp_dir() -> PathBuf {
-    let suffix = SystemTime::now()
+    let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
+    let sequence = NEXT_TEMP_DIR_ID.fetch_add(1, Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!(
-        "ezcheck-cli-test-{}-{}",
+        "ezcheck-cli-test-{}-{timestamp}-{sequence}",
         std::process::id(),
-        suffix
     ));
     fs::create_dir_all(&dir).unwrap();
     dir
