@@ -2,18 +2,33 @@ name: SyncToGitee
 
 on:
   push:
+    branches: [ master ]
+    tags:
+      - "[0-9]*"
+      - "v[0-9]*"
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-gitee
+  cancel-in-progress: true
 
 jobs:
   repo-sync:
+    name: Mirror repository to Gitee
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - uses: Yikun/hub-mirror-action@v1.5
+      - uses: Yikun/hub-mirror-action@ec47170fa9d126a4bee5a1ab9359845bb1395248 # v1.5
         with:
           src: github/Metaphorme
           dst: gitee/metaphorme
           dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
           dst_token: ${{ secrets.GITEE_TOKEN }}
+          # Gitee 仅作为只读镜像，因此允许覆盖其分支状态。
           force_update: true
           static_list: "ezcheck"

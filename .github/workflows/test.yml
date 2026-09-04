@@ -2,10 +2,16 @@ name: Test
 
 on:
   push:
-    paths-ignore: [ "README.md", "README_zh.md", "LICENSE" ]
+    branches: [ master ]
   pull_request:
-    paths-ignore: [ "README.md", "README_zh.md", "LICENSE" ]
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,29 +19,64 @@ env:
 
 jobs:
   quality:
-    name: Format, Clippy and feature unification
+    name: Format, Clippy and all features
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
           toolchain: stable
           components: rustfmt, clippy
+          cache: true
 
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Check unified features
-        run: cargo check --all-features --all-targets
+      - name: Check all features
+        run: cargo check --locked --all-features --all-targets
 
       - name: Run Clippy
-        run: cargo clippy --all-features --all-targets -- -D warnings
+        run: cargo clippy --locked --all-features --all-targets -- -D warnings
+
+  msrv:
+    name: Test declared MSRV
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read MSRV from Cargo.toml
+        id: msrv
+        shell: bash
+        run: |
+          msrv="$(sed -n 's/^rust-version = "\([^"]*\)"/\1/p' Cargo.toml)"
+          if [[ -z "$msrv" ]]; then
+            echo "Cargo.toml 未声明 rust-version" >&2
+            exit 1
+          fi
+          printf 'version=%s\n' "$msrv" >> "$GITHUB_OUTPUT"
+
+      - name: Setup MSRV toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        with:
+          toolchain: ${{ steps.msrv.outputs.version }}
+          cache: true
+
+      - name: Test with declared MSRV
+        run: cargo test --locked --all-features --all-targets
 
   build:
     strategy:
+      fail-fast: false
       matrix:
         config:
           - { target: x86_64-unknown-linux-gnu, os: ubuntu-latest }
@@ -46,37 +87,52 @@ jobs:
           - { target: i686-pc-windows-gnu, os: windows-latest }
           - { target: aarch64-apple-darwin, os: macos-latest }
           - { target: x86_64-apple-darwin, os: macos-latest }
-    
+
     name: ${{ matrix.config.target }}
     runs-on: ${{ matrix.config.os }}
+    timeout-minutes: 30
+    env:
+      CARGO_BUILD_TARGET: ${{ matrix.config.target }}
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - if: matrix.config.target == 'i686-unknown-linux-gnu'
+      - name: Install i686 Linux linker
+        if: matrix.config.target == 'i686-unknown-linux-gnu'
+        shell: bash
         run: |
-          sudo apt update
-          sudo apt install -y gcc-i686-linux-gnu
-          
-          echo "CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=i686-linux-gnu-gcc" >> $GITHUB_ENV
+          sudo apt-get update
+          sudo apt-get install -y gcc-i686-linux-gnu
+          echo "CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=i686-linux-gnu-gcc" >> "$GITHUB_ENV"
 
-      - if: matrix.config.target == 'i686-pc-windows-gnu'
+      - name: Install and verify MinGW32
+        if: matrix.config.target == 'i686-pc-windows-gnu'
+        shell: pwsh
         run: |
-          Invoke-WebRequest -Uri https://github.com/niXman/mingw-builds-binaries/releases/download/16.2.0-rt_v14-rev1/i686-16.2.0-release-posix-dwarf-msvcrt-rt_v14-rev1.7z -OutFile mingw32.7z
+          $url = "https://github.com/niXman/mingw-builds-binaries/releases/download/16.2.0-rt_v14-rev1/i686-16.2.0-release-posix-dwarf-msvcrt-rt_v14-rev1.7z"
+          $expected = "9773342cba88efe50e6f3ddd021ac6f1d9ac1957301705fe64def22f501f0dd4"
+          Invoke-WebRequest -Uri $url -OutFile mingw32.7z
+          $actual = (Get-FileHash -LiteralPath mingw32.7z -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) {
+            throw "MinGW32 SHA-256 校验失败：期望 $expected，实际 $actual"
+          }
           7z x mingw32.7z -oC:\mingw32
-          echo "C:\mingw32\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
+          "C:\mingw32\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
 
       - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
           toolchain: stable
           target: ${{ matrix.config.target }}
+          cache: true
 
       - name: Test ring backend
-        run: cargo test --no-default-features --features ring_backend --target ${{ matrix.config.target }}
+        run: cargo test --locked --no-default-features --features ring_backend
 
       - name: Test hashes backend
-        run: cargo test --no-default-features --features hashes_backend --target ${{ matrix.config.target }}
+        run: cargo test --locked --no-default-features --features hashes_backend
 
       - name: Test mix backend
-        run: cargo test --target ${{ matrix.config.target }}
+        run: cargo test --locked

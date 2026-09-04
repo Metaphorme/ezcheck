@@ -1,114 +1,203 @@
-name: Build
+name: Build and Release
 
 on:
-  release:
-    types: [ published ]
+  push:
+    tags:
+      - "[0-9]*"
+      - "v[0-9]*"
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        backend: [ "mix_backend" ]
-        config:
-          - { target: x86_64-unknown-linux-gnu, os: ubuntu-latest }
-          - { target: x86_64-unknown-linux-musl, os: ubuntu-latest }
-          - { target: aarch64-unknown-linux-gnu, os: ubuntu-latest }
-          - { target: aarch64-unknown-linux-musl, os: ubuntu-latest }
-          - { target: i686-unknown-linux-gnu, os: ubuntu-latest }
-          - { target: loongarch64-unknown-linux-gnu, os: ubuntu-latest }
-          - { target: loongarch64-unknown-linux-musl, os: ubuntu-latest }
-          - { target: x86_64-pc-windows-msvc, os: windows-latest }
-          - { target: x86_64-pc-windows-gnu, os: windows-latest }
-          - { target: i686-pc-windows-msvc, os: windows-latest }
-          - { target: i686-pc-windows-gnu, os: windows-latest }
-          - { target: aarch64-pc-windows-msvc, os: windows-latest }
-          - { target: aarch64-apple-darwin, os: macos-latest }
-          - { target: x86_64-apple-darwin, os: macos-latest }
-    
-    name: ${{ matrix.config.target }}-${{ matrix.backend }}
-    runs-on: ${{ matrix.config.os }}
-    permissions:
-      contents: write
+  validate:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - if: matrix.config.os == 'macos-latest'
-        run: brew install coreutils
-
-      - name: Install mingw32
-        if: matrix.config.target == 'i686-pc-windows-gnu'
+      - name: Validate tag against Cargo.toml
+        if: github.ref_type == 'tag'
+        shell: bash
         run: |
-          Invoke-WebRequest -Uri https://github.com/niXman/mingw-builds-binaries/releases/download/16.2.0-rt_v14-rev1/i686-16.2.0-release-posix-dwarf-msvcrt-rt_v14-rev1.7z -OutFile mingw32.7z
+          package_version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
+          release_version="${GITHUB_REF_NAME#v}"
+
+          if [[ -z "$package_version" || "$release_version" != "$package_version" ]]; then
+            echo "发布标签 ${GITHUB_REF_NAME} 与 Cargo.toml 版本 ${package_version:-<未找到>} 不一致" >&2
+            exit 1
+          fi
+
+  build:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { target: x86_64-unknown-linux-gnu, os: ubuntu-latest, archive: tar.gz }
+          - { target: x86_64-unknown-linux-musl, os: ubuntu-latest, archive: tar.gz }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-latest, archive: tar.gz }
+          - { target: aarch64-unknown-linux-musl, os: ubuntu-latest, archive: tar.gz }
+          - { target: i686-unknown-linux-gnu, os: ubuntu-latest, archive: tar.gz }
+          - { target: loongarch64-unknown-linux-gnu, os: ubuntu-latest, archive: tar.gz }
+          - { target: loongarch64-unknown-linux-musl, os: ubuntu-latest, archive: tar.gz }
+          - { target: x86_64-pc-windows-msvc, os: windows-latest, archive: zip }
+          - { target: x86_64-pc-windows-gnu, os: windows-latest, archive: zip }
+          - { target: i686-pc-windows-msvc, os: windows-latest, archive: zip }
+          - { target: i686-pc-windows-gnu, os: windows-latest, archive: zip }
+          - { target: aarch64-pc-windows-msvc, os: windows-latest, archive: zip }
+          - { target: aarch64-apple-darwin, os: macos-latest, archive: tar.gz }
+          - { target: x86_64-apple-darwin, os: macos-latest, archive: tar.gz }
+
+    name: ${{ matrix.config.target }}-mix_backend
+    runs-on: ${{ matrix.config.os }}
+    timeout-minutes: 30
+    env:
+      TARGET: ${{ matrix.config.target }}
+      CARGO_BUILD_TARGET: ${{ matrix.config.target }}
+      ARCHIVE_NAME: ezcheck-${{ matrix.config.target }}-mix_backend.${{ matrix.config.archive }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install and verify MinGW32
+        if: matrix.config.target == 'i686-pc-windows-gnu'
+        shell: pwsh
+        run: |
+          $url = "https://github.com/niXman/mingw-builds-binaries/releases/download/16.2.0-rt_v14-rev1/i686-16.2.0-release-posix-dwarf-msvcrt-rt_v14-rev1.7z"
+          $expected = "9773342cba88efe50e6f3ddd021ac6f1d9ac1957301705fe64def22f501f0dd4"
+          Invoke-WebRequest -Uri $url -OutFile mingw32.7z
+          $actual = (Get-FileHash -LiteralPath mingw32.7z -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) {
+            throw "MinGW32 SHA-256 校验失败：期望 $expected，实际 $actual"
+          }
           7z x mingw32.7z -oC:\mingw32
-          echo "C:\mingw32\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
+          "C:\mingw32\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
 
       - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
           toolchain: stable
           target: ${{ matrix.config.target }}
+          cache: false
 
-      - name: Install cross
+      - name: Install pinned cross
         if: matrix.config.os == 'ubuntu-latest'
-        run: RUSTFLAGS="" cargo install cross --git https://github.com/cross-rs/cross
+        shell: bash
+        run: cargo install cross --git https://github.com/cross-rs/cross --rev 8c1a8aa4b661711f4b7b6ac07c2e8929ce2f7d27 --locked
+        env:
+          RUSTFLAGS: ""
 
-      - name: Build
+      - name: Build with cross
         if: matrix.config.os == 'ubuntu-latest'
-        run: cross build --release --no-default-features --features ${{ matrix.backend }} --target ${{ matrix.config.target }}
+        shell: bash
+        run: cross build --locked --release --no-default-features --features mix_backend --target "$TARGET"
 
-      - name: Build
+      - name: Build natively
         if: matrix.config.os != 'ubuntu-latest'
-        run: cargo build --release --no-default-features --features ${{ matrix.backend }} --target ${{ matrix.config.target }}
+        run: cargo build --locked --release --no-default-features --features mix_backend
 
-      - if: matrix.config.os == 'windows-latest'
+      - name: Package Windows archive
+        if: matrix.config.os == 'windows-latest'
+        shell: pwsh
         run: |
-          mkdir ezcheck
-          cp target/${{matrix.config.target}}/release/ezcheck.exe ezcheck/
+          New-Item -ItemType Directory -Path package | Out-Null
+          Copy-Item -LiteralPath "target/$env:TARGET/release/ezcheck.exe" -Destination package/
+          Copy-Item -LiteralPath LICENSE -Destination package/
 
-      - if: matrix.config.os != 'windows-latest'
+          Push-Location package
+          $files = @("ezcheck.exe", "LICENSE")
+          $checksums = $files | ForEach-Object {
+            $hash = (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $_"
+          }
+          $checksums | Set-Content -LiteralPath sha256sum.txt -Encoding ascii
+          Pop-Location
+
+          Compress-Archive -Path package/* -DestinationPath $env:ARCHIVE_NAME
+
+      - name: Package Unix archive
+        if: matrix.config.os != 'windows-latest'
+        shell: bash
         run: |
-          mkdir ezcheck
-          cp target/${{matrix.config.target}}/release/ezcheck ezcheck/
+          mkdir package
+          cp "target/$TARGET/release/ezcheck" package/
+          cp LICENSE package/
 
-      - name: Add license and Gerenate sha256
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            (cd package && shasum -a 256 ezcheck LICENSE > sha256sum.txt)
+          else
+            (cd package && sha256sum ezcheck LICENSE > sha256sum.txt)
+          fi
+
+          tar -czf "$ARCHIVE_NAME" -C package .
+
+      - name: Upload archive
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ezcheck-${{ matrix.config.target }}-mix_backend
+          path: ${{ env.ARCHIVE_NAME }}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  publish:
+    name: Publish GitHub Release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # 仅此任务需要创建或更新 GitHub Release。
+
+    steps:
+      - name: Download archives
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate archive checksums
+        shell: bash
         run: |
-          cp LICENSE ezcheck/
-          cd ezcheck
-          sha256sum ezcheck* > sha256sum.txt
-          sha256sum LICENSE >> sha256sum.txt
+          cd release-assets
+          mapfile -t assets < <(find . -maxdepth 1 -type f \( -name '*.tar.gz' -o -name '*.zip' \) -printf '%f\n' | sort)
 
-      - if: matrix.config.os == 'windows-latest'
-        run: Compress-Archive -Path .\ezcheck\* -DestinationPath .\ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}.zip
+          if [[ "${#assets[@]}" -ne 14 ]]; then
+            echo "发布资产数量错误：期望 14，实际 ${#assets[@]}" >&2
+            exit 1
+          fi
 
-      - if: matrix.config.os != 'windows-latest'
-        run: tar -czvf ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}.tar.gz -C ezcheck .
+          sha256sum "${assets[@]}" > SHA256SUMS
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}
-          path: ezcheck/*
+      - name: Create or update release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" \
+              --draft \
+              --verify-tag \
+              --generate-notes \
+              --title "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY"
+          fi
 
-      - name: Upload to GitHub Release
-        uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'release' && matrix.config.os == 'windows-latest'
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref }}
-          overwrite: true
-          file: ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}.zip
-
-      - name: Upload to GitHub Release
-        uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'release' && matrix.config.os != 'windows-latest'
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref }}
-          overwrite: true
-          file: ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}.tar.gz
+          gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber --repo "$GITHUB_REPOSITORY"
+          gh release edit "$GITHUB_REF_NAME" --draft=false --repo "$GITHUB_REPOSITORY"
