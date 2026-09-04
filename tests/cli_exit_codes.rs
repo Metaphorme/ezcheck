@@ -10,6 +10,13 @@ fn ezcheck_bin() -> &'static str {
     env!("CARGO_BIN_EXE_ezcheck")
 }
 
+fn expected_usage(subcommand: &str) -> String {
+    format!(
+        "Usage: ezcheck{} {subcommand}",
+        std::env::consts::EXE_SUFFIX
+    )
+}
+
 fn unique_temp_dir() -> PathBuf {
     let suffix = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -102,7 +109,9 @@ fn calculate_rejects_a_missing_input_as_a_usage_error() {
         .unwrap();
 
     assert_eq!(output.status.code(), Some(2));
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Usage: ezcheck calculate"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let expected = expected_usage("calculate");
+    assert!(stderr.contains(&expected), "unexpected stderr: {stderr}");
 }
 
 #[test]
@@ -122,7 +131,9 @@ fn compare_rejects_multiple_inputs_as_a_usage_error() {
         .unwrap();
 
     assert_eq!(output.status.code(), Some(2));
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Usage: ezcheck compare"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let expected = expected_usage("compare");
+    assert!(stderr.contains(&expected), "unexpected stderr: {stderr}");
 }
 
 #[test]
