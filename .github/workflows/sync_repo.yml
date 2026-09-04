@@ -9,7 +9,7 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
-      - uses: Yikun/hub-mirror-action@master
+      - uses: Yikun/hub-mirror-action@v1.5
         with:
           src: github/Metaphorme
           dst: gitee/metaphorme

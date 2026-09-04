@@ -36,7 +36,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - if: matrix.config.os == 'macos-latest'
         run: brew install coreutils
@@ -44,7 +44,7 @@ jobs:
       - name: Install mingw32
         if: matrix.config.target == 'i686-pc-windows-gnu'
         run: |
-          Invoke-WebRequest -Uri https://github.com/niXman/mingw-builds-binaries/releases/download/15.2.0-rt_v13-rev1/i686-15.2.0-release-posix-dwarf-msvcrt-rt_v13-rev1.7z -OutFile mingw32.7z
+          Invoke-WebRequest -Uri https://github.com/niXman/mingw-builds-binaries/releases/download/16.2.0-rt_v14-rev1/i686-16.2.0-release-posix-dwarf-msvcrt-rt_v14-rev1.7z -OutFile mingw32.7z
           7z x mingw32.7z -oC:\mingw32
           echo "C:\mingw32\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
 
@@ -90,7 +90,7 @@ jobs:
         run: tar -czvf ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}.tar.gz -C ezcheck .
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ezcheck-${{ matrix.config.target }}-${{ matrix.backend }}
           path: ezcheck/*
